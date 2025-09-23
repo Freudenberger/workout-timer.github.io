@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Workout Timer</title>
+    <meta name="description" content="Configurable workout interval timer (EMOM, Tabata, HIIT, Custom)" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⏱️</text></svg>">
+    <meta name="theme-color" content="#0f172a" />
+    <style>
+        /* Tailwind config override (inline for simplicity) */
+        :root {
+            color-scheme: dark light;
+        }
+    </style>
+</head>
+
+<body class="h-full bg-slate-900 text-slate-100 font-sans antialiased selection:bg-emerald-500/40 flex flex-col">
+
+    <main class="flex-1 flex flex-col justify-center items-center w-full max-w-5xl mx-auto px-4 pb-24" id="appRoot">
+        <!-- Screen: Select Type -->
+        <section id="screenSelect" class="screen active w-full flex flex-wrap justify-center items-center gap-6 pt-4" aria-labelledby="selectHeading">
+            <h2 id="selectHeading" class="sr-only">Select Workout Type</h2>
+            <button data-type="emom" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
+                <div class="flex flex-col gap-2 text-left">
+                    <span class="text-2xl">⏲️</span>
+                    <span class="font-semibold text-lg">EMOM</span>
+                    <p class="text-xs text-slate-400 leading-snug">Every minute start a new work segment. Configure work seconds inside the minute.</p>
+                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
+                </div>
+            </button>
+            <button data-type="tabata" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
+                <div class="flex flex-col gap-2 text-left">
+                    <span class="text-2xl">🔥</span>
+                    <span class="font-semibold text-lg">Tabata</span>
+                    <p class="text-xs text-slate-400 leading-snug">Classic 20s work / 10s rest intervals. Adjustable rounds & durations.</p>
+                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
+                </div>
+            </button>
+            <button data-type="hiit" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
+                <div class="flex flex-col gap-2 text-left">
+                    <span class="text-2xl">⚡</span>
+                    <span class="font-semibold text-lg">HIIT</span>
+                    <p class="text-xs text-slate-400 leading-snug">High intensity intervals with warmup / cooldown support.</p>
+                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
+                </div>
+            </button>
+            <button data-type="custom" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
+                <div class="flex flex-col gap-2 text-left">
+                    <span class="text-2xl">🛠️</span>
+                    <span class="font-semibold text-lg">Custom</span>
+                    <p class="text-xs text-slate-400 leading-snug">Full control over prep, work, rests, and between-round recovery.</p>
+                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
+                </div>
+            </button>
+        </section>
+
+        <!-- Screen: Configure -->
+        <section id="screenConfig" class="screen hidden w-full max-w-2xl mx-auto grid gap-4" aria-labelledby="configHeading">
+            <div class="space-y-2">
+                <div class="card">
+                    <div class="flex flex-col gap-4">
+                        <div>
+                            <select id="workoutType" class="field" aria-describedby="typeHelp">
+                                <option value="emom">EMOM (Every Minute On the Minute)</option>
+                                <option value="tabata">Tabata</option>
+                                <option value="hiit">HIIT</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+
+                        <!-- Dynamic form fields injected here -->
+                        <div id="dynamicFields" class="grid gap-6"></div>
+
+                        <div class="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-700">
+                            <div class="flex items-baseline gap-2 text-sm">
+                                <span class="text-slate-400">Total</span>
+                                <strong id="totalDuration" class="font-semibold">00:00</strong>
+                            </div>
+                            <div class="flex items-baseline gap-2 text-sm">
+                                <span class="text-slate-400">Rounds</span>
+                                <strong id="roundCount" class="font-semibold">0</strong>
+                            </div>
+                            <div class="ml-auto flex gap-2">
+                                <button id="savePresetBtn" type="button" class="btn-subtle" title="Save custom preset">Save Preset</button>
+                                <select id="presetSelect" class="field text-xs max-w-[15rem] min-w-[8rem]" title="Load preset"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 justify-center">
+                    <button id="backToSelectBtn" type="button" class="btn-subtle">Back</button>
+                    <button id="goToTimerBtn" type="button" class="btn-primary">Continue to Timer</button>
+                </div>
+                <div class="card" aria-labelledby="previewHeading">
+                    <h2 id="previewHeading" class="text-lg font-semibold mb-3">Sequence Preview</h2>
+                    <ol id="sequencePreview" class="text-xs md:text-sm space-y-1 max-h-60 overflow-auto pr-1" aria-live="polite" aria-label="Upcoming intervals"></ol>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Screen: Timer -->
+        <section id="screenTimer" class="screen hidden w-full max-w-3xl mx-auto space-y-6" aria-labelledby="timerHeading">
+            <div class="flex gap-3">
+                <button id="timerBackBtn" class="btn-subtle" type="button">Back to Configuration</button>
+                <button id="timerRestartBtn" class="btn-secondary ml-auto" type="button" title="Rebuild & restart">Restart</button>
+            </div>
+            <div class="grid gap-4">
+                <div class="space-y-6">
+                    <div class="card relative overflow-hidden isolate">
+                        <div class="absolute inset-0 pointer-events-none timer-bg-glow"></div>
+                        <header id="timerHeading" class="flex flex-col sm:flex-row sm:items-end gap-2 mb-4 pointer-events-none select-none absolute top-4 left-4 z-10">
+                            <span class="sr-only">Current Interval</span>
+                            <div class="flex gap-2 text-xs" id="statusBadges"></div>
+                        </header>
+
+                        <div class="grid gap-6 sm:gap-8">
+                            <div class="text-center space-y-3 flex flex-col items-center">
+                                <p id="intervalLabel" class="uppercase tracking-wider text-emerald-400 font-medium text-xs">Ready</p>
+                                <div class="timer-dial">
+                                    <span id="mainTime" class="font-mono timer-digits tabular-nums">00:00</span>
+                                </div>
+                                <p id="roundInfo" class="text-slate-400 text-xs tracking-wide">Round 0 / 0</p>
+                                <p id="nextInterval" class="text-[11px] text-slate-500 h-4" aria-live="polite"></p>
+                            </div>
+
+                            <div class="timer-button-bar flex flex-wrap justify-center gap-4">
+                                <button id="startBtn" class="btn-primary" type="button">Start</button>
+                                <button id="pauseBtn" class="btn-secondary" type="button" disabled>Pause</button>
+                                <button id="resetBtn" class="btn-secondary" type="button" disabled>Reset</button>
+                                <button id="skipBtn" class="btn-subtle" type="button" disabled>Skip</button>
+                            </div>
+                            <div class="flex items-center justify-center gap-4 text-xs text-slate-400">
+                                <label class="inline-flex items-center gap-1">
+                                    <input type="checkbox" id="soundToggle" class="accent-emerald-500" checked /> Sound
+                                </label>
+                                <label class="inline-flex items-center gap-1">
+                                    <input type="checkbox" id="voiceToggle" class="accent-emerald-500" /> Voice Cues
+                                </label>
+                                <label class="inline-flex items-center gap-1">
+                                    <input type="checkbox" id="autoRestartToggle" class="accent-emerald-500" /> Auto-Restart
+                                </label>
+                            </div>
+                            <div id="progressBarWrapper" class="h-3 w-full max-w-sm mx-auto bg-slate-800/70 rounded-full overflow-hidden shadow-inner">
+                                <div id="progressBar" class="h-full w-0 bg-gradient-to-r from-emerald-500 to-teal-400 transition-[width] duration-100 linear"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" aria-labelledby="logHeading">
+                        <h2 id="logHeading" class="text-lg font-semibold mb-3">Rounds Log</h2>
+                        <ul id="roundLog" class="text-xs md:text-sm space-y-1 max-h-56 overflow-auto pr-1" aria-live="off"></ul>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-3">Configuration Summary</h3>
+                        <ul id="configSummary" class="text-xs md:text-sm space-y-1"></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="w-full max-w-5xl mx-auto px-4 pb-8 text-center text-[10px] text-slate-500 flex-shrink-0">
+        <p>Workout Timer – Pure HTML & JS • Extensible architecture • <a href="https://tailwindcss.com/" class="underline hover:text-slate-300" target="_blank" rel="noopener">Tailwind CSS</a></p>
+    </footer>
+
+    <div id="liveRegion" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+    <!-- Modal Root -->
+    <div id="modalRoot" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog" aria-labelledby="modalTitle" aria-describedby="modalMessage">
+        <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+        <div class="relative mx-auto mt-32 w-[min(92%,420px)] bg-slate-800 rounded-xl shadow-xl ring-1 ring-slate-700/60 p-6 flex flex-col gap-5 animate-fade-in">
+            <div>
+                <h2 id="modalTitle" class="text-lg font-semibold tracking-tight">Confirm</h2>
+                <p id="modalMessage" class="mt-2 text-sm text-slate-300"></p>
+            </div>
+            <div id="modalExtra" class="text-xs text-slate-400 hidden"></div>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="modalCancel" class="btn-subtle" type="button">Cancel</button>
+                <button id="modalOk" class="btn-primary" type="button">OK</button>
+            </div>
+        </div>
+    </div>
+    <script src="timer.js"></script>
+</body>
+
+</html>

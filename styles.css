@@ -1,0 +1,393 @@
+/* THEME OVERRIDE: Fancy Futuristic Redesign -------------------------------------------------- */
+/* Root tokens */
+:root {
+  --color-bg: #05080f;
+  --color-panel: rgba(17, 27, 39, 0.72);
+  --color-panel-border: rgba(59, 130, 246, 0.15);
+  --color-glass-highlight: rgba(255, 255, 255, 0.08);
+  --color-accent: #10b981;
+  --color-accent-soft: #34d399;
+  --color-danger: #ef4444;
+  --color-rest: #3b82f6;
+  --color-prep: #f59e0b;
+  --color-cool: #7c3aed;
+  --radius-sm: 0.55rem;
+  --radius-md: 1.1rem;
+  --radius-lg: 1.75rem;
+  --radius-pill: 999px;
+  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fade: 220ms var(--easing-spring);
+  --transition-move: 380ms var(--easing-spring);
+  --shadow-soft: 0 4px 14px -4px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 10px 32px -8px rgba(0, 0, 0, 0.55);
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--color-accent-soft),
+    var(--color-accent) 55%,
+    #059669
+  );
+  --gradient-rest: linear-gradient(135deg, #60a5fa, #3b82f6 60%, #1d4ed8);
+  --gradient-prep: linear-gradient(135deg, #fbbf24, #f59e0b 55%, #d97706);
+  --gradient-cool: linear-gradient(135deg, #a78bfa, #7c3aed 55%, #5b21b6);
+}
+
+/* Global background + animated aura */
+body {
+  background: radial-gradient(
+      circle at 20% 25%,
+      rgba(16, 185, 129, 0.08),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 75% 70%,
+      rgba(59, 130, 246, 0.08),
+      transparent 55%
+    ),
+    linear-gradient(140deg, #030712, #0f172a 55%, #0b1320);
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(16, 185, 129, 0.12),
+    rgba(59, 130, 246, 0.12),
+    rgba(124, 58, 237, 0.12),
+    rgba(16, 185, 129, 0.12)
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.25;
+}
+@media (prefers-reduced-motion: reduce) {
+  body::after {
+    animation: none;
+  }
+}
+@keyframes spinAura {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Panels (cards) */
+.card {
+  background: var(--color-panel);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--color-panel-border);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  transition: box-shadow var(--transition-fade),
+    transform var(--transition-move);
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    160deg,
+    var(--color-glass-highlight),
+    transparent 65%
+  );
+  opacity: 0.55;
+  mix-blend-mode: overlay;
+  transition: opacity 300ms ease;
+}
+.card:hover {
+  box-shadow: var(--shadow-float);
+}
+.card:hover::before {
+  opacity: 0.8;
+}
+
+/* Selection cards intensify focus */
+.card-select {
+  cursor: pointer;
+}
+.card-select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.card-select:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+.card {
+  padding: 10px !important;
+}
+
+/* Buttons */
+button {
+  padding: 10px !important;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+select {
+  padding: 10px !important;
+  border-radius: var(--radius-pill);
+}
+
+.btn-base {
+  @apply inline-flex items-center justify-center font-semibold tracking-wide select-none transition-all;
+}
+.btn-base {
+  border-radius: var(--radius-pill);
+  position: relative;
+  isolation: isolate;
+  line-height: 1.1;
+}
+.btn-base:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.btn-base:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+.btn-primary {
+  background: var(--gradient-accent);
+  color: #052e1c;
+  padding: 0.85rem 1.55rem;
+  box-shadow: 0 4px 18px -4px rgba(16, 185, 129, 0.6);
+}
+.btn-primary:hover {
+  filter: brightness(1.07);
+  box-shadow: 0 6px 24px -4px rgba(16, 185, 129, 0.75);
+}
+.btn-primary:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #e2e8f0;
+  padding: 0.8rem 1.4rem;
+  border: 1px solid #475569;
+}
+.btn-secondary:hover {
+  background: linear-gradient(135deg, #243347, #3b4f63);
+}
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+.btn-subtle {
+  background: rgba(148, 163, 184, 0.08);
+  color: #cbd5e1;
+  padding: 0.75rem 1.3rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+.btn-subtle:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+/* Timer cluster */
+
+#mainTime {
+  z-index: 100;
+}
+
+.timer-dial {
+  /* Converted from perfect circle to a responsive oval to save vertical space */
+  position: relative;
+  width: clamp(20rem, 66vw, 34rem);
+  height: clamp(5rem, 20vw, 14rem); /* Reduce height vs width */
+  /* Elliptical border radius: first value controls horizontal radii, second vertical */
+  border-radius: 50% / 58%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.timer-dial::before,
+.timer-dial::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.timer-dial::before {
+  background: radial-gradient(
+      circle at 30% 30%,
+      rgba(255, 255, 255, 0.08),
+      transparent 70%
+    ),
+    linear-gradient(145deg, #0f172a, #1e293b);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.04),
+    0 8px 32px -8px rgba(0, 0, 0, 0.8);
+}
+.timer-dial::after {
+  background: conic-gradient(
+    from 0deg,
+    var(--color-accent) 0turn,
+    transparent 0.25turn,
+    var(--color-rest) 0.5turn,
+    transparent 0.75turn,
+    var(--color-cool) 1turn
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.15;
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-dial::after {
+    animation: none;
+  }
+}
+@keyframes rotateDial {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.timer-digits {
+  font-size: clamp(6.5rem, 9vw, 6.2rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 22px rgba(16, 185, 129, 0.45),
+    0 0 42px rgba(16, 185, 129, 0.25);
+}
+
+/* Phase thematic ring glow */
+body.phase-work .timer-dial::before {
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4),
+    0 0 32px -4px rgba(16, 185, 129, 0.5),
+    inset 0 0 32px -10px rgba(16, 185, 129, 0.4);
+}
+body.phase-rest .timer-dial::before {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35),
+    0 0 32px -4px rgba(59, 130, 246, 0.45),
+    inset 0 0 32px -10px rgba(59, 130, 246, 0.35);
+}
+body.phase-prep .timer-dial::before {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4),
+    0 0 32px -4px rgba(245, 158, 11, 0.5),
+    inset 0 0 32px -10px rgba(245, 158, 11, 0.35);
+}
+body.phase-cooldown .timer-dial::before {
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.4),
+    0 0 32px -4px rgba(124, 58, 237, 0.5),
+    inset 0 0 32px -10px rgba(124, 58, 237, 0.35);
+}
+
+/* Progress bar */
+#progressBarWrapper {
+  height: 0.9rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+#progressBar {
+  border-radius: inherit;
+  background: var(--gradient-accent);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 4px 14px -4px rgba(16, 185, 129, 0.6);
+  transition: width 90ms linear;
+}
+
+/* Dynamic fields table */
+#dynamicFields table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.6rem;
+}
+#dynamicFields td {
+  padding: 0.35rem 0.5rem;
+}
+#dynamicFields td:first-child {
+  width: 48%;
+  padding-left: 0.25rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+#dynamicFields tr {
+  position: relative;
+}
+#dynamicFields tr::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.3rem;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.number-stepper {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.number-stepper > button {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background var(--transition-fade),
+    transform var(--transition-move);
+}
+.number-stepper > button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.number-stepper > button:active {
+  transform: translateY(0);
+}
+.number-stepper > input {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.75rem;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-accent);
+}
+
+/* Accessibility: Focus ring unify */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* Utility adjustments */
+.centered-container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 56rem;
+  padding-inline: clamp(1rem, 4vw, 2.25rem);
+}
+
+/* Reduced motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+/* LEGACY CLEANUP: Trim superseded button/card rules */
+/* Removed older .btn-base, .btn-primary, .btn-secondary, .btn-subtle blocks above after redesign. */
