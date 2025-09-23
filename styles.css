@@ -301,6 +301,92 @@ body.phase-cooldown .timer-dial::before {
   border-collapse: separate;
   border-spacing: 0 0.6rem;
 }
+
+/* Sequence preview enhanced coloring */
+#sequencePreview li.seq-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.5rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+  line-height: 1.2;
+  transition: background 160ms ease, transform 160ms ease;
+}
+#sequencePreview li.seq-item.current {
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0.16),
+    rgba(16, 185, 129, 0.04)
+  );
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3),
+    0 2px 8px -2px rgba(16, 185, 129, 0.4);
+}
+#sequencePreview li.seq-item:not(.current):hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+#sequencePreview .seq-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 0 3px rgba(255, 255, 255, 0.03);
+}
+
+/* Color themes */
+.seq-work .seq-dot {
+  background: var(--gradient-accent);
+}
+.seq-prep .seq-dot {
+  background: var(--gradient-prep);
+}
+.seq-warmup .seq-dot {
+  background: var(--gradient-prep);
+  filter: saturate(1.3);
+}
+.seq-cooldown .seq-dot {
+  background: var(--gradient-cool);
+}
+.seq-rest-exercise .seq-dot {
+  background: var(--gradient-rest);
+}
+.seq-rest-between .seq-dot {
+  background: linear-gradient(135deg, #64748b, #475569);
+}
+
+/* Label + time layout */
+#sequencePreview .seq-label {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+#sequencePreview .seq-time {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+/* Subtle type-based text coloring */
+.seq-work .seq-label {
+  color: var(--color-accent-soft);
+}
+.seq-prep .seq-label,
+.seq-warmup .seq-label {
+  color: #fbbf24;
+}
+.seq-rest-exercise .seq-label {
+  color: #60a5fa;
+}
+.seq-rest-between .seq-label {
+  color: #93c5fd;
+}
+.seq-cooldown .seq-label {
+  color: #c4b5fd;
+}
+
 #dynamicFields td {
   padding: 0.35rem 0.5rem;
 }
@@ -391,3 +477,14 @@ input[type="checkbox"] {
 
 /* LEGACY CLEANUP: Trim superseded button/card rules */
 /* Removed older .btn-base, .btn-primary, .btn-secondary, .btn-subtle blocks above after redesign. */
+
+select {
+  background: #334155;
+}
+
+select:disabled,
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}

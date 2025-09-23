@@ -21,6 +21,17 @@ function announce(msg) {
   setTimeout(() => (liveRegion.textContent = msg), 40);
 }
 
+function showToast(msg) {
+  if (!els.toast) return;
+  els.toast.textContent = msg;
+  els.toast.classList.remove("opacity-0");
+  els.toast.classList.add("opacity-100");
+  setTimeout(() => {
+    els.toast.classList.remove("opacity-100");
+    els.toast.classList.add("opacity-0");
+  }, 2000);
+}
+
 // ---------- Workout Type Definitions ----------
 // Each builder returns { sequence: Interval[], meta }
 // Interval: { label, type: 'work'|'rest'|'prep'|'cooldown', duration }
@@ -30,7 +41,7 @@ const WorkoutTypes = {
     // EMOM: user sets minutes (rounds) & work duration (<=60) remainder is rest
     const rounds = config.rounds || 10;
     const work = config.work || 40; // seconds
-    const prep = config.prep || 5;
+    const prep = config.prep || 10;
     const minute = 60;
     const sequence = [];
     if (prep)
@@ -52,7 +63,7 @@ const WorkoutTypes = {
     const rounds = config.rounds || 8;
     const work = config.work || 20;
     const rest = config.rest;
-    const prep = config.prep || 5;
+    const prep = config.prep || 10;
     const sequence = [];
     if (prep)
       sequence.push({ label: "Get Ready", type: "prep", duration: prep });
@@ -69,7 +80,7 @@ const WorkoutTypes = {
     const rest = config.rest ? config.rest : 15;
     const warmup = config.warmup || 0;
     const cooldown = config.cooldown || 0;
-    const prep = config.prep || 5;
+    const prep = config.prep || 10;
     const sequence = [];
     if (prep)
       sequence.push({ label: "Get Ready", type: "prep", duration: prep });
@@ -88,31 +99,59 @@ const WorkoutTypes = {
     return { sequence, meta: { totalRounds: rounds } };
   },
   custom(config) {
-    // Custom allows full arrays? For now: rounds, work, rest, roundRestBetween? optional prep
-    const rounds = config.rounds || 5;
-    const work = config.work || 30;
-    const rest = config.rest || 15;
-    const between = config.betweenRounds || 0;
-    const prep = config.prep || 5;
+    // Enhanced Custom: supports multiple exercises per round.
+    // Backward compatibility: if legacy work/rest provided and no exerciseWork exists, map them.
+    const rounds = config.rounds || 1;
+    const exercisesPerRound = config.exercisesPerRound || 1;
+    const exerciseWork = config.exerciseWork || config.work || 30;
+    const exerciseRest =
+      config.exerciseRest !== undefined
+        ? config.exerciseRest
+        : config.rest !== undefined
+        ? config.rest
+        : 10;
+    const betweenRounds = config.betweenRounds || 0;
+    const prep = config.prep || 10;
     const sequence = [];
     if (prep)
       sequence.push({ label: "Get Ready", type: "prep", duration: prep });
     for (let r = 1; r <= rounds; r++) {
-      sequence.push({ label: `Round ${r} Work`, type: "work", duration: work });
-      if (rest)
+      for (let e = 1; e <= exercisesPerRound; e++) {
         sequence.push({
-          label: `Round ${r} Rest`,
-          type: "rest",
-          duration: rest,
+          label: `R${r} Ex ${e} Work`,
+          type: "work",
+          duration: exerciseWork,
         });
-      if (between && r < rounds)
+        if (exerciseRest && e < exercisesPerRound) {
+          sequence.push({
+            label: `R${r} Ex ${e} Rest`,
+            type: "rest",
+            duration: exerciseRest,
+          });
+        }
+      }
+      if (betweenRounds && r < rounds) {
         sequence.push({
-          label: `Between Rounds`,
+          label: `Between Round ${r}`,
           type: "rest",
-          duration: between,
+          duration: betweenRounds,
         });
+      }
     }
-    return { sequence, meta: { totalRounds: rounds } };
+    return { sequence, meta: { totalRounds: rounds, exercisesPerRound } };
+  },
+  micro(config) {
+    // Micro: fixed short interval repeated 'reps' times, beep each interval end.
+    const reps = config.reps || 50;
+    const interval = config.interval || 5;
+    const prep = config.prep || 10;
+    const sequence = [];
+    if (prep)
+      sequence.push({ label: "Get Ready", type: "prep", duration: prep });
+    for (let i = 1; i <= reps; i++) {
+      sequence.push({ label: `Rep ${i}`, type: "work", duration: interval });
+    }
+    return { sequence, meta: { totalRounds: reps } };
   },
 };
 
@@ -292,6 +331,10 @@ const els = {
   soundToggle: $("#soundToggle"),
   presetSelect: $("#presetSelect"),
   savePresetBtn: $("#savePresetBtn"),
+  copyLinkBtn: $("#copyLinkBtn"),
+  importUrlInput: $("#importUrlInput"),
+  importUrlBtn: $("#importUrlBtn"),
+  importStatus: $("#importStatus"),
   screenSelect: $("#screenSelect"),
   screenConfig: $("#screenConfig"),
   screenTimer: $("#screenTimer"),
@@ -300,13 +343,26 @@ const els = {
   goToTimerBtn: $("#goToTimerBtn"),
   timerBackBtn: $("#timerBackBtn"),
   timerRestartBtn: $("#timerRestartBtn"),
+  timerCopyBtn: $("#timerCopyBtn"),
+  toast: $("#toast"),
 };
 
 const defaultConfigs = {
-  emom: { prep: 5, rounds: 10, work: 40 },
-  tabata: { prep: 5, rounds: 8, work: 20, rest: 10 },
-  hiit: { prep: 5, rounds: 6, work: 45, rest: 15, warmup: 60, cooldown: 60 },
-  custom: { prep: 5, rounds: 5, work: 30, rest: 15, betweenRounds: 0 },
+  emom: { prep: 10, rounds: 10, work: 40 },
+  tabata: { prep: 10, rounds: 8, work: 20, rest: 10 },
+  hiit: { prep: 10, rounds: 6, work: 45, rest: 15, warmup: 60, cooldown: 60 },
+  // Custom now supports multiple exercises per round. For backwards compatibility
+  // legacy presets with work/rest only will map to exerciseWork/exerciseRest with exercisesPerRound=1
+  custom: {
+    prep: 10,
+    rounds: 5,
+    exercisesPerRound: 3,
+    exerciseWork: 30,
+    exerciseRest: 10,
+    betweenRounds: 30,
+  },
+  // Micro: very small fixed interval repeated N times (e.g., every 5s do 1 rep / action)
+  micro: { prep: 10, reps: 100, interval: 5 },
 };
 
 // Persistence
@@ -358,19 +414,33 @@ els.presetSelect.addEventListener("change", (e) => {
 // Dynamic form fields builder
 const fieldDefs = {
   rounds: { label: "Rounds", min: 1, max: 200 },
-  work: { label: "Work (s)", min: 1, max: 3600 },
-  rest: { label: "Rest (s)", min: 0, max: 3600 },
+  work: { label: "Work (s)", min: 1, max: 3600 }, // legacy (non-custom multi-exercise)
+  rest: { label: "Rest (s)", min: 0, max: 3600 }, // legacy
   warmup: { label: "Warmup (s)", min: 0, max: 1200 },
   cooldown: { label: "Cooldown (s)", min: 0, max: 1200 },
   prep: { label: "Prep (s)", min: 0, max: 1200 },
   betweenRounds: { label: "Between Rounds Rest (s)", min: 0, max: 1200 },
+  exercisesPerRound: { label: "Exercises / Round", min: 1, max: 50 },
+  exerciseWork: { label: "Exercise Work (s)", min: 1, max: 3600 },
+  exerciseRest: { label: "Exercise Rest (s)", min: 0, max: 3600 },
+  reps: { label: "Reps (Intervals)", min: 1, max: 10000 },
+  interval: { label: "Interval (s)", min: 1, max: 3600 },
 };
 
 const typeFieldMap = {
   emom: ["prep", "rounds", "work"],
   tabata: ["prep", "rounds", "work", "rest"],
   hiit: ["prep", "warmup", "rounds", "work", "rest", "cooldown"],
-  custom: ["prep", "rounds", "work", "rest", "betweenRounds"],
+  // Custom uses the multi-exercise set; legacy work/rest omitted from UI
+  custom: [
+    "prep",
+    "rounds",
+    "exercisesPerRound",
+    "exerciseWork",
+    "exerciseRest",
+    "betweenRounds",
+  ],
+  micro: ["prep", "reps", "interval"],
 };
 
 function renderFields(type) {
@@ -385,7 +455,7 @@ function renderFields(type) {
           <td class="py-2">
             <div class="number-stepper">
               <button type="button" class="step-btn" data-step="-1" aria-label="Decrease ${d.label}" data-target="f_${key}">−</button>
-              <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}" data-key="${key}" min="${d.min}" max="${d.max}" value="${val}" class="field text-base" />
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}" data-key="${key}" min="${d.min}" max="${d.max}" value="${val}" class="field text-base" aria-label="${d.label}" />
               <button type="button" class="step-btn" data-step="1" aria-label="Increase ${d.label}" data-target="f_${key}">+</button>
             </div>
           </td>
@@ -436,6 +506,13 @@ function collectConfig() {
     const v = parseInt(inp.value, 10);
     if (!isNaN(v)) cfg[k] = v;
   });
+  if (type === "custom") {
+    // Map legacy work/rest to exerciseWork/exerciseRest if user loaded an old preset
+    if (cfg.work != null && cfg.exerciseWork == null)
+      cfg.exerciseWork = cfg.work;
+    if (cfg.rest != null && cfg.exerciseRest == null)
+      cfg.exerciseRest = cfg.rest;
+  }
   currentConfigMemory[type] = cfg;
   return { type, ...cfg };
 }
@@ -446,6 +523,12 @@ function applyConfig(cfg) {
     els.workoutType.value = type;
   }
   currentConfigMemory[type] = { ...cfg };
+  if (type === "custom") {
+    const c = currentConfigMemory[type];
+    if (c.work != null && c.exerciseWork == null) c.exerciseWork = c.work;
+    if (c.rest != null && c.exerciseRest == null) c.exerciseRest = c.rest;
+    if (c.exercisesPerRound == null) c.exercisesPerRound = 1;
+  }
   renderFields(type);
   $$("input[data-key]", els.dynamicFields).forEach((inp) => {
     const key = inp.dataset.key;
@@ -463,36 +546,223 @@ function build() {
   engine.load(sequence);
   // Update UI preview & stats
   els.roundCount.textContent = meta.totalRounds ?? "?";
+  // For micro type, totalRounds represents total reps (each interval is one rep)
   els.totalDuration.textContent = formatTime(engine.totalDuration());
   els.sequencePreview.innerHTML = sequence
     .map((it, i) => {
-      const color =
-        it.type === "work"
-          ? "text-emerald-400"
-          : it.type === "rest"
-          ? "text-sky-400"
-          : it.type === "prep"
-          ? "text-amber-400"
-          : it.type === "cooldown"
-          ? "text-violet-300"
-          : "";
-      return `<li class="flex justify-between gap-3 ${
-        i === 0 ? "opacity-100" : "opacity-90"
-      }"><span class="${color}">${
+      // classify rest sub-types for custom multi-exercise: exercise rest vs between-round
+      let clsType = it.type;
+      if (it.type === "rest") {
+        if (/Between Round/.test(it.label) || /Between Rounds/.test(it.label))
+          clsType = "rest-between";
+        else if (/Ex \d+ Rest/.test(it.label)) clsType = "rest-exercise";
+      } else if (it.type === "prep" && /Warm Up/i.test(it.label)) {
+        clsType = "warmup"; // differentiate warmup prep
+      }
+      const liClasses = ["seq-item", `seq-${clsType}`, i === 0 ? "current" : ""]
+        .filter(Boolean)
+        .join(" ");
+      return `<li class="${liClasses}"><span class="seq-dot"></span><span class="seq-label">${
         it.label
-      }</span><span class="tabular-nums ${color}">${formatTime(
-        it.duration
-      )}</span></li>`;
+      }</span><span class="seq-time">${formatTime(it.duration)}</span></li>`;
     })
     .join("");
   els.intervalLabel.textContent = "Ready";
   els.mainTime.textContent = formatTime(sequence[0]?.duration || 0);
-  els.roundInfo.textContent = `Round 0 / ${meta.totalRounds ?? 0}`;
+  const totalDur = engine.totalDuration();
+  const baseRoundInfo =
+    type === "custom"
+      ? "Round 0 • Exercise 0"
+      : `Round 0 / ${meta.totalRounds ?? 0}`;
+  els.roundInfo.textContent = `${baseRoundInfo} • Elapsed 00:00 • Left ${formatTime(
+    totalDur
+  )}`;
   els.nextInterval.textContent = sequence[1]
     ? `Next: ${sequence[1].label} (${formatTime(sequence[1].duration)})`
     : "";
   updateBadges();
   updateConfigSummary(type, cfg, meta);
+}
+
+// -------- Shareable URL Logic --------
+function configToQuery() {
+  const { type, ...cfg } = collectConfig();
+  const params = new URLSearchParams();
+  params.set("type", type);
+  Object.entries(cfg).forEach(([k, v]) => {
+    if (typeof v === "number" && !isNaN(v)) params.set(k, String(v));
+  });
+  return params.toString();
+}
+
+// Clear current query string (optionally preserving selected keys)
+function clearQueryString(preserveKeys = []) {
+  if (!location.search) return false;
+  try {
+    const url = new URL(location.href);
+    if (preserveKeys.length) {
+      const kept = new URLSearchParams();
+      preserveKeys.forEach((k) => {
+        if (url.searchParams.has(k)) kept.set(k, url.searchParams.get(k));
+      });
+      url.search = kept.toString() ? `?${kept.toString()}` : "";
+    } else {
+      url.search = "";
+    }
+    const originPart = url.origin && url.origin !== "null" ? url.origin : "";
+    history.replaceState(
+      null,
+      "",
+      originPart + url.pathname + url.search + url.hash
+    );
+    return true;
+  } catch (e) {
+    try {
+      const base = location.href.split("?")[0];
+      history.replaceState(null, "", base + location.hash);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+// Parse URLSearchParams into config & apply (returns true on success)
+function applyParams(qs) {
+  if (!qs.has("type")) return false;
+  const type = qs.get("type");
+  if (!WorkoutTypes[type]) return false;
+  const cfg = { type };
+  const numericFields = new Set([
+    "prep",
+    "rounds",
+    "work",
+    "rest",
+    "warmup",
+    "cooldown",
+    "betweenRounds",
+    "exercisesPerRound",
+    "exerciseWork",
+    "exerciseRest",
+    "reps",
+    "interval",
+  ]);
+  qs.forEach((val, key) => {
+    if (numericFields.has(key)) {
+      const n = parseInt(val, 10);
+      if (!isNaN(n)) cfg[key] = n;
+    }
+  });
+  applyConfig(cfg);
+  build();
+  return true;
+}
+
+function applyQueryParams() {
+  const qs = new URLSearchParams(location.search);
+  if (!applyParams(qs)) return false;
+  showScreen("screenTimer");
+  clearQueryString();
+  return true;
+}
+
+if (els.copyLinkBtn) {
+  els.copyLinkBtn.addEventListener("click", async () => {
+    // Ensure latest build before exporting
+    build();
+    const qs = configToQuery();
+    let origin = location.origin;
+
+    if (origin === "null") origin = "file://"; // handle file:// fallback
+
+    const url = `${origin}${location.pathname}?${qs}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      announce("Shareable URL copied");
+      showToast("URL copied!");
+    } catch (e) {
+      console.warn("Clipboard copy failed", e);
+      // Fallback prompt
+      window.prompt("Copy URL", url);
+    }
+  });
+}
+
+// Copy from Timer screen (uses existing collected config, rebuild for freshness)
+if (els.timerCopyBtn) {
+  els.timerCopyBtn.addEventListener("click", async () => {
+    build(); // ensure UI + sequence reflect current editable config
+    const qs = configToQuery();
+    let origin = location.origin;
+    if (origin === "null") origin = "file://";
+    const url = `${origin}${location.pathname}?${qs}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      announce("Timer URL copied");
+      showToast("URL copied!");
+    } catch (e) {
+      console.warn("Clipboard copy failed", e);
+      window.prompt("Copy URL", url);
+    }
+  });
+}
+
+// Manual import from Select screen
+if (els.importUrlBtn && els.importUrlInput) {
+  const handleImport = () => {
+    const raw = els.importUrlInput.value.trim();
+    if (!raw) return;
+    let queryPart = "";
+    const qIndex = raw.indexOf("?");
+    if (qIndex !== -1) {
+      queryPart = raw.substring(qIndex + 1).split("#")[0];
+    } else {
+      queryPart = raw;
+    }
+    try {
+      // If full URL, extract search piece
+      if (/^https?:/i.test(raw)) {
+        const u = new URL(raw);
+        queryPart = u.search; // includes leading ? or empty
+      }
+      // If user pasted just params without leading ? add it
+      if (queryPart && !queryPart.startsWith("?")) queryPart = "?" + queryPart;
+      const qs = new URLSearchParams(queryPart);
+      const success = applyParams(qs);
+      if (success) {
+        announce("Configuration loaded from URL");
+        clearQueryString();
+        if (els.importStatus) {
+          els.importStatus.textContent = "Loaded ✔";
+          els.importStatus.className =
+            "text-[10px] tracking-wide text-emerald-400 h-4";
+        }
+        showScreen("screenTimer");
+      } else {
+        announce("Invalid or unsupported parameters");
+        if (els.importStatus) {
+          els.importStatus.textContent = "Invalid parameters";
+          els.importStatus.className =
+            "text-[10px] tracking-wide text-rose-400 h-4";
+        }
+      }
+    } catch (e) {
+      console.warn("Import failed", e);
+      announce("Failed to parse URL");
+      if (els.importStatus) {
+        els.importStatus.textContent = "Parse error";
+        els.importStatus.className =
+          "text-[10px] tracking-wide text-rose-400 h-4";
+      }
+    }
+  };
+  els.importUrlBtn.addEventListener("click", handleImport);
+  els.importUrlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleImport();
+    }
+  });
 }
 
 function updateBadges() {
@@ -520,6 +790,25 @@ els.pauseBtn.addEventListener("click", () => {
 els.resetBtn.addEventListener("click", () => {
   build();
   setControlState("idle");
+  // Clear progress & logs on explicit reset
+  if (els.progressBar) {
+    els.progressBar.style.width = "0%";
+    els.progressBar.classList.remove(
+      "progress-bar-work",
+      "progress-bar-rest",
+      "progress-bar-prep",
+      "progress-bar-cooldown"
+    );
+  }
+  if (els.roundLog) {
+    els.roundLog.innerHTML = "";
+  }
+  document.body.classList.remove(
+    "phase-work",
+    "phase-rest",
+    "phase-prep",
+    "phase-cooldown"
+  );
   announce("Reset");
 });
 els.skipBtn.addEventListener("click", () => engine.skip());
@@ -597,13 +886,24 @@ engine.on("tick", ({ remaining, interval, position }) =>
 
 function displayInterval(interval) {
   els.intervalLabel.textContent = interval.label;
-  const workIndex = engine.sequence
-    .filter((s) => s.type === "work")
-    .indexOf(interval);
-  const totalWork = engine.sequence.filter((s) => s.type === "work").length;
-  els.roundInfo.textContent = `Round ${
-    workIndex >= 0 ? workIndex + 1 : 0
-  } / ${totalWork}`;
+  const workIntervals = engine.sequence.filter((s) => s.type === "work");
+  const workIndex = workIntervals.indexOf(interval);
+  const totalWork = workIntervals.length;
+  // Try to infer exercises per round for custom type from meta (if available on engine?)
+  // Since meta isn't stored on engine we attempt pattern detection: labels starting with R# Ex # Work
+  let roundDisplay = 0;
+  if (/^R\d+ Ex \d+ Work/.test(interval.label)) {
+    const m = interval.label.match(/^R(\d+) Ex (\d+)/);
+    if (m) {
+      const rNum = parseInt(m[1], 10);
+      const exNum = parseInt(m[2], 10);
+      roundDisplay = rNum;
+      els.roundInfo.textContent = `Round ${rNum} • Exercise ${exNum}`; // elapsed/left appended in tick
+    }
+  }
+  if (!roundDisplay) {
+    els.roundInfo.textContent = `Work ${workIndex + 1} / ${totalWork}`; // elapsed/left appended in tick
+  }
   const next = engine.sequence[interval.index + 1];
   els.nextInterval.textContent = next
     ? `Next: ${next.label} (${formatTime(next.duration)})`
@@ -625,6 +925,12 @@ function displayInterval(interval) {
     "progress-bar-cooldown"
   );
   els.progressBar.classList.add("progress-bar-" + interval.type);
+  // Highlight current item in sequence preview
+  const items = $$("#sequencePreview li.seq-item");
+  items.forEach((li, idx) => {
+    if (idx === interval.index) li.classList.add("current");
+    else li.classList.remove("current");
+  });
 }
 
 function displayFinished() {
@@ -651,6 +957,21 @@ function updateTick(remaining, interval) {
   const elapsed = interval.duration - remaining;
   const pct = Math.min(100, (elapsed / interval.duration) * 100);
   els.progressBar.style.width = pct + "%";
+  // Update elapsed / remaining global workout info
+  const total = engine.totalDuration();
+  // Compute how much time has elapsed overall: sum of completed intervals + (current interval duration - remaining)
+  let completed = 0;
+  for (let i = 0; i < engine.position; i++)
+    completed += engine.sequence[i].duration;
+  const overallElapsed = completed + (interval.duration - remaining);
+  const overallLeft = Math.max(0, total - overallElapsed);
+  // Preserve base round text (before the • Elapsed) by splitting if already present
+  let base = els.roundInfo.textContent;
+  const marker = " • Elapsed";
+  if (base.includes(marker)) base = base.split(marker)[0];
+  els.roundInfo.textContent = `${base} • Elapsed ${formatTime(
+    Math.max(0, Math.floor(overallElapsed))
+  )} • Left ${formatTime(Math.max(0, Math.ceil(overallLeft)))}`;
   // last 3 second beeps
   const rInt = Math.ceil(remaining);
   if (els.soundToggle.checked && rInt <= 3 && rInt > 0) {
@@ -789,16 +1110,21 @@ function updateConfigSummary(type, cfg, meta) {
 }
 
 // default initial screen is select; if hash indicates direct type start on config
-if (location.hash.startsWith("#type=")) {
-  const t = location.hash.split("=")[1];
-  if (WorkoutTypes[t]) {
-    els.workoutType.value = t;
-    renderFields(t);
-    build();
-    showScreen("screenConfig");
+// Priority: query params -> hash -> default select
+if (!applyQueryParams()) {
+  if (location.hash.startsWith("#type=")) {
+    const t = location.hash.split("=")[1];
+    if (WorkoutTypes[t]) {
+      els.workoutType.value = t;
+      renderFields(t);
+      build();
+      showScreen("screenConfig");
+    } else {
+      showScreen("screenSelect");
+    }
+  } else {
+    showScreen("screenSelect");
   }
-} else {
-  showScreen("screenSelect");
 }
 
 // ---------- Custom Confirm Dialog ----------

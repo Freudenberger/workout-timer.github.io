@@ -23,38 +23,51 @@
 
     <main class="flex-1 flex flex-col justify-center items-center w-full max-w-5xl mx-auto px-4 pb-24" id="appRoot">
         <!-- Screen: Select Type -->
-        <section id="screenSelect" class="screen active w-full flex flex-wrap justify-center items-center gap-6 pt-4" aria-labelledby="selectHeading">
+        <section id="screenSelect" class="screen active w-full flex flex-wrap justify-center items-start gap-6 pt-4" aria-labelledby="selectHeading">
             <h2 id="selectHeading" class="sr-only">Select Workout Type</h2>
+            <div class="w-full max-w-3xl order-first">
+                <div class="flex flex-row sm:flex-row gap-3 items-stretch mb-2">
+                    <div class="flex-1 min-w-[12rem]">
+                        <input id="importUrlInput" type="url" placeholder="Import From URL / Query - Paste URL here..." class="import-input w-full field px-4 py-3 rounded-md bg-slate-800/70 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs" aria-label="URL to import workout configuration from" />
+                    </div>
+                    <button id="importUrlBtn" type="button" class="btn-secondary self-center sm:self-auto " title="Load configuration from URL" aria-label="Import workout configuration from URL">Load</button>
+                </div>
+                <p id="importStatus" class="text-[10px] tracking-wide text-slate-500 h-4"></p>
+            </div>
             <button data-type="emom" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
-                <div class="flex flex-col gap-2 text-left">
+                <div class="flex flex-col gap-2 text-center sm:text-center">
                     <span class="text-2xl">⏲️</span>
                     <span class="font-semibold text-lg">EMOM</span>
                     <p class="text-xs text-slate-400 leading-snug">Every minute start a new work segment. Configure work seconds inside the minute.</p>
-                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
                 </div>
             </button>
             <button data-type="tabata" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
-                <div class="flex flex-col gap-2 text-left">
+                <div class="flex flex-col gap-2 text-center sm:text-center">
                     <span class="text-2xl">🔥</span>
                     <span class="font-semibold text-lg">Tabata</span>
                     <p class="text-xs text-slate-400 leading-snug">Classic 20s work / 10s rest intervals. Adjustable rounds & durations.</p>
-                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
                 </div>
             </button>
             <button data-type="hiit" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
-                <div class="flex flex-col gap-2 text-left">
+                <div class="flex flex-col gap-2 text-center sm:text-center">
                     <span class="text-2xl">⚡</span>
                     <span class="font-semibold text-lg">HIIT</span>
                     <p class="text-xs text-slate-400 leading-snug">High intensity intervals with warmup / cooldown support.</p>
-                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
                 </div>
             </button>
             <button data-type="custom" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
-                <div class="flex flex-col gap-2 text-left">
+                <div class="flex flex-col gap-2 text-center sm:text-center">
                     <span class="text-2xl">🛠️</span>
                     <span class="font-semibold text-lg">Custom</span>
                     <p class="text-xs text-slate-400 leading-snug">Full control over prep, work, rests, and between-round recovery.</p>
-                    <span class="mt-auto text-[10px] uppercase tracking-wider text-emerald-400 group-hover:underline">Select</span>
+                </div>
+            </button>
+            <!-- New Micro Type Card -->
+            <button data-type="micro" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
+                <div class="flex flex-col gap-2 text-center sm:text-center">
+                    <span class="text-2xl">🎯</span>
+                    <span class="font-semibold text-lg">Micro</span>
+                    <p class="text-xs text-slate-400 leading-snug">Repeat a tiny fixed interval for many reps (e.g. 5s × 100).</p>
                 </div>
             </button>
         </section>
@@ -65,12 +78,14 @@
                 <div class="card">
                     <div class="flex flex-col gap-4">
                         <div>
-                            <select id="workoutType" class="field" aria-describedby="typeHelp">
+                            <select id="workoutType" class="field" aria-label="Select workout type">
                                 <option value="emom">EMOM (Every Minute On the Minute)</option>
                                 <option value="tabata">Tabata</option>
                                 <option value="hiit">HIIT</option>
                                 <option value="custom">Custom</option>
+                                <option value="micro">Micro (Tiny Fixed Interval)</option>
                             </select>
+                            <p id="typeHelp" class="sr-only">Select the type of workout to configure.</p>
                         </div>
 
                         <!-- Dynamic form fields injected here -->
@@ -86,8 +101,9 @@
                                 <strong id="roundCount" class="font-semibold">0</strong>
                             </div>
                             <div class="ml-auto flex gap-2">
-                                <button id="savePresetBtn" type="button" class="btn-subtle" title="Save custom preset">Save Preset</button>
-                                <select id="presetSelect" class="field text-xs max-w-[15rem] min-w-[8rem]" title="Load preset"></select>
+                                <button id="copyLinkBtn" type="button" class="btn-subtle" title="Copy shareable URL" aria-label="Copy shareable URL">Copy URL</button>
+                                <button id="savePresetBtn" type="button" class="btn-subtle" title="Save current configuration as preset" aria-label="Save current configuration as preset">Save Preset</button>
+                                <select id="presetSelect" class="field text-xs max-w-[15rem] min-w-[8rem]" title="Load preset" aria-label="Select a saved preset"></select>
                             </div>
                         </div>
                     </div>
@@ -108,8 +124,12 @@
         <!-- Screen: Timer -->
         <section id="screenTimer" class="screen hidden w-full max-w-3xl mx-auto space-y-6" aria-labelledby="timerHeading">
             <div class="flex gap-3">
-                <button id="timerBackBtn" class="btn-subtle" type="button">Back to Configuration</button>
-                <button id="timerRestartBtn" class="btn-secondary ml-auto" type="button" title="Rebuild & restart">Restart</button>
+                <button id="timerBackBtn" class="btn-subtle" type="button">Back to Config</button>
+                <button id="timerCopyBtn" class="btn-subtle" type="button" title="Copy shareable URL for this workout" aria-label="Copy shareable URL for this workout">Copy URL</button>
+                <span class="ml-auto">
+                    <button id="resetBtn" class="btn-secondary ml-auto" type="button" title="Reset workout" aria-label="Reset workout">Reset</button>
+                    <button id="timerRestartBtn" class="btn-secondary ml-auto" type="button" title="Rebuild & restart">Restart</button>
+                </span>
             </div>
             <div class="grid gap-4">
                 <div class="space-y-6">
@@ -123,17 +143,16 @@
                         <div class="grid gap-6 sm:gap-8">
                             <div class="text-center space-y-3 flex flex-col items-center">
                                 <p id="intervalLabel" class="uppercase tracking-wider text-emerald-400 font-medium text-xs">Ready</p>
-                                <div class="timer-dial">
+                                <div id="timer" class="timer-dial" aria-label="Current time remaining in workout">
                                     <span id="mainTime" class="font-mono timer-digits tabular-nums">00:00</span>
                                 </div>
-                                <p id="roundInfo" class="text-slate-400 text-xs tracking-wide">Round 0 / 0</p>
+                                <p id="roundInfo" class="round-info" aria-label="Current round and phase information"></p>
                                 <p id="nextInterval" class="text-[11px] text-slate-500 h-4" aria-live="polite"></p>
                             </div>
 
                             <div class="timer-button-bar flex flex-wrap justify-center gap-4">
-                                <button id="startBtn" class="btn-primary" type="button">Start</button>
-                                <button id="pauseBtn" class="btn-secondary" type="button" disabled>Pause</button>
-                                <button id="resetBtn" class="btn-secondary" type="button" disabled>Reset</button>
+                                <button id="startBtn" class="btn-primary" type="button" title="Start workout (Space)" aria-label="Start workout">Start</button>
+                                <button id="pauseBtn" class="btn-secondary" type="button" title="Pause workout (Space)" aria-label="Pause workout">Pause</button>
                                 <button id="skipBtn" class="btn-subtle" type="button" disabled>Skip</button>
                             </div>
                             <div class="flex items-center justify-center gap-4 text-xs text-slate-400">
@@ -141,14 +160,18 @@
                                     <input type="checkbox" id="soundToggle" class="accent-emerald-500" checked /> Sound
                                 </label>
                                 <label class="inline-flex items-center gap-1">
-                                    <input type="checkbox" id="voiceToggle" class="accent-emerald-500" /> Voice Cues
+                                    <input type="checkbox" id="voiceToggle" class="accent-emerald-500" aria-label="Enable voice announcements" /> Voice Cues
                                 </label>
                                 <label class="inline-flex items-center gap-1">
                                     <input type="checkbox" id="autoRestartToggle" class="accent-emerald-500" /> Auto-Restart
                                 </label>
+                                <label class="inline-flex items-center gap-1">
+                                    <input id="beepCheck" type="checkbox" class="checkbox" aria-label="Enable beep sounds" />
+                                    Beep
+                                </label>
                             </div>
                             <div id="progressBarWrapper" class="h-3 w-full max-w-sm mx-auto bg-slate-800/70 rounded-full overflow-hidden shadow-inner">
-                                <div id="progressBar" class="h-full w-0 bg-gradient-to-r from-emerald-500 to-teal-400 transition-[width] duration-100 linear"></div>
+                                <div id="progressBar" class="h-full w-0 bg-gradient-to-r from-emerald-500 to-teal-400 transition-[width] duration-100 linear" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Workout progress"></div>
                             </div>
                         </div>
                     </div>
@@ -169,7 +192,7 @@
     </main>
 
     <footer class="w-full max-w-5xl mx-auto px-4 pb-8 text-center text-[10px] text-slate-500 flex-shrink-0">
-        <p>Workout Timer – Pure HTML & JS • Extensible architecture • <a href="https://tailwindcss.com/" class="underline hover:text-slate-300" target="_blank" rel="noopener">Tailwind CSS</a></p>
+        <p>Workout Timer – by Freudenberger</p>
     </footer>
 
     <div id="liveRegion" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
@@ -188,6 +211,7 @@
             </div>
         </div>
     </div>
+    <div id="toast" class="fixed bottom-4 right-4 bg-emerald-500 text-slate-100 px-4 py-2 rounded-md shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50" aria-live="polite" aria-atomic="true"></div>
     <script src="timer.js"></script>
 </body>
 
