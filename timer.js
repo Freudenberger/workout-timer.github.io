@@ -227,6 +227,7 @@ class TimerEngine {
   }
   skip() {
     if (this.state === "finished") return;
+    this.emit("skipped", this.current());
     this._advance();
   }
   current() {
@@ -311,6 +312,9 @@ function speak(text) {
 // ---------- UI Controller ----------
 const engine = new TimerEngine();
 
+// Track last mark timestamp for calculating time between marks
+let lastMarkTime = null;
+
 const els = {
   workoutType: $("#workoutType"),
   dynamicFields: $("#dynamicFields"),
@@ -324,6 +328,7 @@ const els = {
   startBtn: $("#startBtn"),
   pauseBtn: $("#pauseBtn"),
   resetBtn: $("#resetBtn"),
+  markBtn: $("#markBtn"),
   skipBtn: $("#skipBtn"),
   progressBar: $("#progressBar"),
   roundLog: $("#roundLog"),
@@ -733,7 +738,7 @@ if (els.importUrlBtn && els.importUrlInput) {
         announce("Configuration loaded from URL");
         clearQueryString();
         if (els.importStatus) {
-          els.importStatus.textContent = "Loaded ✔";
+          els.importStatus.textContent = "Loaded ✅";
           els.importStatus.className =
             "text-[10px] tracking-wide text-emerald-400 h-4";
         }
@@ -790,6 +795,8 @@ els.pauseBtn.addEventListener("click", () => {
 els.resetBtn.addEventListener("click", () => {
   build();
   setControlState("idle");
+  // Reset mark tracking
+  lastMarkTime = null;
   // Clear progress & logs on explicit reset
   if (els.progressBar) {
     els.progressBar.style.width = "0%";
@@ -812,30 +819,62 @@ els.resetBtn.addEventListener("click", () => {
   announce("Reset");
 });
 els.skipBtn.addEventListener("click", () => engine.skip());
+els.markBtn.addEventListener("click", () => {
+  // Calculate current elapsed time
+  const currentInterval = engine.current();
+  if (!currentInterval) return;
+  const remaining = engine.remaining;
+  const elapsedInCurrent = currentInterval.duration - remaining;
+  let totalElapsed = 0;
+  for (let i = 0; i < engine.position; i++) {
+    totalElapsed += engine.sequence[i].duration;
+  }
+  totalElapsed += elapsedInCurrent;
+
+  // Calculate time since last mark
+  const currentTime = performance.now() / 1000; // Convert to seconds
+  let timeSinceLastMark = null;
+  if (lastMarkTime !== null) {
+    timeSinceLastMark = currentTime - lastMarkTime;
+  }
+  lastMarkTime = currentTime;
+
+  // Log the mark
+  logRound(currentInterval, {
+    elapsed: totalElapsed,
+    remaining: engine.totalDuration() - totalElapsed,
+    marked: true,
+    timeSinceLastMark,
+  });
+});
 
 function setControlState(state) {
   if (state === "idle") {
     els.startBtn.disabled = false;
     els.pauseBtn.disabled = true;
     els.resetBtn.disabled = true;
+    els.markBtn.disabled = true;
     els.skipBtn.disabled = true;
     els.pauseBtn.textContent = "Pause";
   } else if (state === "running") {
     els.startBtn.disabled = true;
     els.pauseBtn.disabled = false;
     els.resetBtn.disabled = false;
+    els.markBtn.disabled = false;
     els.skipBtn.disabled = false;
     els.pauseBtn.textContent = "Pause";
   } else if (state === "paused") {
     els.startBtn.disabled = true;
     els.pauseBtn.disabled = false;
     els.resetBtn.disabled = false;
+    els.markBtn.disabled = false;
     els.skipBtn.disabled = false;
     els.pauseBtn.textContent = "Resume";
   } else if (state === "finished") {
     els.startBtn.disabled = false;
     els.pauseBtn.disabled = true;
     els.resetBtn.disabled = false;
+    els.markBtn.disabled = true;
     els.skipBtn.disabled = true;
     els.pauseBtn.textContent = "Pause";
   }
@@ -844,6 +883,8 @@ function setControlState(state) {
 // Engine events
 engine.on("load", () => setControlState("idle"));
 engine.on("start", (interval) => {
+  // Reset mark tracking for new workout
+  lastMarkTime = null;
   setControlState("running");
   displayInterval(interval);
   if (els.soundToggle.checked) beeper.sequence();
@@ -855,13 +896,51 @@ engine.on("interval", (interval) => {
   if (els.soundToggle.checked) beeper.sequence();
   announce(interval.label);
   speak(interval.label);
-  logRound(interval);
+  // No logging here, moved to interval_complete
 });
 engine.on("interval_complete", (interval) => {
   if (els.soundToggle.checked) beeper.beep({ freq: 440 });
+  // Log completed interval
+  let totalElapsed = 0;
+  for (let i = 0; i <= engine.position; i++) {
+    // include current since it completed
+    totalElapsed += engine.sequence[i].duration;
+  }
+  const totalRemaining = engine.totalDuration() - totalElapsed;
+  logRound(interval, { elapsed: totalElapsed, remaining: totalRemaining });
+});
+engine.on("skipped", (interval) => {
+  // Calculate elapsed and remaining for logging
+  let totalElapsed = 0;
+  for (let i = 0; i < engine.position; i++) {
+    totalElapsed += engine.sequence[i].duration;
+  }
+  // For skipped, remaining is the same as before skip, since we didn't complete it
+  const totalRemaining = engine.totalDuration() - totalElapsed;
+  logRound(interval, {
+    elapsed: totalElapsed,
+    remaining: totalRemaining,
+    skipped: true,
+  });
 });
 engine.on("pause", () => {
   setControlState("paused");
+  // Log pause event
+  const currentInterval = engine.current();
+  if (currentInterval) {
+    const remaining = engine.remaining;
+    const elapsedInCurrent = currentInterval.duration - remaining;
+    let totalElapsed = 0;
+    for (let i = 0; i < engine.position; i++) {
+      totalElapsed += engine.sequence[i].duration;
+    }
+    totalElapsed += elapsedInCurrent;
+    logRound(null, {
+      elapsed: totalElapsed,
+      remaining: engine.totalDuration() - totalElapsed,
+      customMessage: "Paused",
+    });
+  }
   announce("Paused");
 });
 engine.on("resume", () => {
@@ -982,13 +1061,64 @@ function updateTick(remaining, interval) {
   }
 }
 
-function logRound(interval) {
-  if (interval.type !== "work") return;
+function logRound(
+  interval,
+  {
+    elapsed,
+    remaining,
+    marked = false,
+    skipped = false,
+    paused = false,
+    customMessage = null,
+    timeSinceLastMark = null,
+  } = {}
+) {
+  if (interval && interval.type !== "work" && !marked && !skipped) return;
   const li = document.createElement("li");
-  li.innerHTML = `<span class="text-emerald-400">✔</span> <span>${interval.label}</span>`;
-  els.roundLog.appendChild(li);
-  // keep scrolled to bottom
-  els.roundLog.scrollTop = els.roundLog.scrollHeight;
+  let icon = "✅";
+  let iconClass = "text-emerald-400";
+  let label = interval ? interval.label : "";
+
+  if (customMessage) {
+    icon = "⏸️";
+    iconClass = "text-yellow-400";
+    label = customMessage;
+  } else if (marked) {
+    icon = "🛑";
+    iconClass = "text-blue-400";
+  } else if (skipped) {
+    icon = "⏭️";
+    iconClass = "text-orange-400";
+  }
+
+  li.innerHTML = `<span class="${iconClass}">${icon}</span> <span>${label}</span>`;
+  if (elapsed !== undefined && !customMessage) {
+    li.innerHTML += ` <span class="text-slate-400 text-xs">(Elapsed: ${formatTime(
+      Math.floor(elapsed)
+    )} | Left: ${formatTime(Math.ceil(remaining))})</span>`;
+  }
+  if (marked && timeSinceLastMark !== null) {
+    li.innerHTML += ` <span class="text-slate-400 text-xs">(+${formatTime(
+      Math.floor(timeSinceLastMark)
+    )})</span>`;
+  }
+  if (marked) {
+    li.classList.add("marked");
+  }
+  if (skipped) {
+    li.classList.add("skipped");
+  }
+  if (customMessage) {
+    li.classList.add("pause");
+  }
+  // Prepend new entries at the top (newest first)
+  if (els.roundLog.firstChild) {
+    els.roundLog.insertBefore(li, els.roundLog.firstChild);
+  } else {
+    els.roundLog.appendChild(li);
+  }
+  // Scroll to top to show newest entries
+  els.roundLog.scrollTop = 0;
 }
 
 // Keyboard shortcuts
@@ -1011,25 +1141,6 @@ window.addEventListener("keydown", (e) => {
 // Initial render
 renderFields(els.workoutType.value);
 build();
-
-// Expose for debugging
-window.__engine = engine;
-
-// Simple lightweight manual test (dev helper). Call window.__testTabata() in console.
-window.__testTabata = function () {
-  const testCfg = { type: "tabata", rounds: 2, work: 3, rest: 2 };
-  console.log("Testing Tabata config", testCfg);
-  const { sequence } = WorkoutTypes.tabata(testCfg);
-  if (sequence.length !== testCfg.rounds * 2)
-    console.error("Unexpected sequence length", sequence.length);
-  else console.log("Sequence length OK");
-  console.log(
-    "Total duration",
-    sequence.reduce((a, b) => a + b.duration, 0),
-    "s"
-  );
-  return sequence;
-};
 
 // ---------- Screen Navigation ----------
 function showScreen(id) {

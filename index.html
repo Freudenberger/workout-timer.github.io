@@ -21,7 +21,7 @@
 
 <body class="h-full bg-slate-900 text-slate-100 font-sans antialiased selection:bg-emerald-500/40 flex flex-col">
 
-    <main class="flex-1 flex flex-col justify-center items-center w-full max-w-5xl mx-auto px-4 pb-24" id="appRoot">
+    <main class="flex-1 flex flex-col justify-center items-center w-full max-w-5xl mx-auto px-4 pb-4" id="appRoot">
         <!-- Screen: Select Type -->
         <section id="screenSelect" class="screen active w-full flex flex-wrap justify-center items-start gap-6 pt-4" aria-labelledby="selectHeading">
             <h2 id="selectHeading" class="sr-only">Select Workout Type</h2>
@@ -153,6 +153,7 @@
                             <div class="timer-button-bar flex flex-wrap justify-center gap-4">
                                 <button id="startBtn" class="btn-primary" type="button" title="Start workout (Space)" aria-label="Start workout">Start</button>
                                 <button id="pauseBtn" class="btn-secondary" type="button" title="Pause workout (Space)" aria-label="Pause workout">Pause</button>
+                                <button id="markBtn" class="btn-subtle" type="button" title="Mark current time" aria-label="Mark current time">Mark</button>
                                 <button id="skipBtn" class="btn-subtle" type="button" disabled>Skip</button>
                             </div>
                             <div class="flex items-center justify-center gap-4 text-xs text-slate-400">
@@ -178,7 +179,7 @@
 
                     <div class="card" aria-labelledby="logHeading">
                         <h2 id="logHeading" class="text-lg font-semibold mb-3">Rounds Log</h2>
-                        <ul id="roundLog" class="text-xs md:text-sm space-y-1 max-h-56 overflow-auto pr-1" aria-live="off"></ul>
+                        <ul id="roundLog" class="text-xs md:text-sm space-y-1 max-h-56 overflow-auto pr-1 font-mono" aria-live="off"></ul>
                     </div>
                 </div>
                 <div class="space-y-6">
@@ -192,7 +193,7 @@
     </main>
 
     <footer class="w-full max-w-5xl mx-auto px-4 pb-8 text-center text-[10px] text-slate-500 flex-shrink-0">
-        <p>Workout Timer – by Freudenberger</p>
+        <p>Workout Timer – by <u><a href="https://github.com/Freudenberger" target="_blank" rel="noopener noreferrer">Freudenberger</a></u></p>
     </footer>
 
     <div id="liveRegion" class="sr-only" aria-live="assertive" aria-atomic="true"></div>

@@ -74,6 +74,10 @@ body::after {
   }
 }
 
+main {
+  padding-top: 16px;
+}
+
 /* Panels (cards) */
 .card {
   background: var(--color-panel);
