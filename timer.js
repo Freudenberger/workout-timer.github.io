@@ -153,6 +153,16 @@ const WorkoutTypes = {
     }
     return { sequence, meta: { totalRounds: reps } };
   },
+  countdown(config) {
+    // Simple countdown: optional prep, then a single work interval of total seconds
+    const total = config.total || 600; // default 10 min
+    const prep = config.prep || 0;
+    const sequence = [];
+    if (prep)
+      sequence.push({ label: "Get Ready", type: "prep", duration: prep });
+    sequence.push({ label: "Timer", type: "work", duration: total });
+    return { sequence, meta: { totalRounds: 1 } };
+  },
 };
 
 // ---------- Timer Engine ----------
@@ -340,6 +350,7 @@ const els = {
   importUrlInput: $("#importUrlInput"),
   importUrlBtn: $("#importUrlBtn"),
   importStatus: $("#importStatus"),
+  quickPresetBtns: $$("#screenSelect [data-preset]"),
   screenSelect: $("#screenSelect"),
   screenConfig: $("#screenConfig"),
   screenTimer: $("#screenTimer"),
@@ -368,6 +379,7 @@ const defaultConfigs = {
   },
   // Micro: very small fixed interval repeated N times (e.g., every 5s do 1 rep / action)
   micro: { prep: 10, reps: 100, interval: 5 },
+  countdown: { prep: 0, total: 600 },
 };
 
 // Persistence
@@ -416,6 +428,47 @@ els.presetSelect.addEventListener("change", (e) => {
   build();
 });
 
+// ---------- Quick Presets (from Select screen) ----------
+const quickPresets = {
+  // 5 Tabatas in a row: modelled as HIIT rounds with between-set rest. We approximate 5 blocks of Tabata.
+  // Using custom type: 8 exercises per round with 20/10, repeated for 5 rounds, and 60s between rounds.
+  tabata5: {
+    type: "custom",
+    prep: 10,
+    rounds: 5,
+    exercisesPerRound: 8,
+    exerciseWork: 20,
+    exerciseRest: 10,
+    betweenRounds: 10,
+  },
+  // 10 min EMOM (60s of work, no rest): EMOM with work=60
+  emom10x60: {
+    type: "emom",
+    prep: 10,
+    rounds: 10,
+    work: 60,
+  },
+  // Micro - 100 burpees (1 every 4 seconds)
+  micro100x4: {
+    type: "micro",
+    prep: 10,
+    reps: 100,
+    interval: 4,
+  },
+};
+
+els.quickPresetBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const key = btn.getAttribute("data-preset");
+    const cfg = quickPresets[key];
+    if (!cfg) return;
+    applyConfig(cfg);
+    build();
+    showScreen("screenTimer");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+});
+
 // Dynamic form fields builder
 const fieldDefs = {
   rounds: { label: "Rounds", min: 1, max: 200 },
@@ -430,6 +483,7 @@ const fieldDefs = {
   exerciseRest: { label: "Exercise Rest (s)", min: 0, max: 3600 },
   reps: { label: "Reps (Intervals)", min: 1, max: 10000 },
   interval: { label: "Interval (s)", min: 1, max: 3600 },
+  total: { label: "Total Time (s)", min: 1, max: 24 * 3600 },
 };
 
 const typeFieldMap = {
@@ -446,6 +500,7 @@ const typeFieldMap = {
     "betweenRounds",
   ],
   micro: ["prep", "reps", "interval"],
+  countdown: ["prep", "total"],
 };
 
 function renderFields(type) {
@@ -651,6 +706,7 @@ function applyParams(qs) {
     "exerciseRest",
     "reps",
     "interval",
+    "total",
   ]);
   qs.forEach((val, key) => {
     if (numericFields.has(key)) {

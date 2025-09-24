@@ -33,6 +33,36 @@
                     <button id="importUrlBtn" type="button" class="btn-secondary self-center sm:self-auto " title="Load configuration from URL" aria-label="Import workout configuration from URL">Load</button>
                 </div>
                 <p id="importStatus" class="text-[10px] tracking-wide text-slate-500 h-4"></p>
+                <!-- Quick Presets -->
+                <div class="mt-4 quick-presets">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-2">Quick Presets</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <button data-preset="tabata5" class="card card-select group w-full" type="button" title="Load 5 Tabatas in a row">
+                            <div class="flex flex-col gap-2 text-left sm:text-center">
+                                <span class="text-2xl">🔥×5 Tabatas</span>
+                                <p class="text-xs text-slate-400 leading-snug">5 × (8 rounds 20/10). Between sets: 10s (~24:00 total)</p>
+                            </div>
+                        </button>
+                        <button data-preset="emom10x60" class="card card-select group w-full" type="button" title="Load 10-minute EMOM (60s work)">
+                            <div class="flex flex-col gap-2 text-left sm:text-center">
+                                <span class="text-2xl">⏲️10‑min EMOM</span>
+                                <p class="text-xs text-slate-400 leading-snug">10 rounds • 60s work per minute • No rest.</p>
+                            </div>
+                        </button>
+                        <button data-preset="micro100x4" class="card card-select group w-full" type="button" title="Load Micro: 100 burpees (1 every 4s)">
+                            <div class="flex flex-col gap-2 text-left sm:text-center">
+                                <span class="text-2xl">🎯Micro: 100 Burpees</span>
+                                <p class="text-xs text-slate-400 leading-snug">100 reps • 4s interval (~6:40 total)</p>
+                            </div>
+                        </button>
+                        <button data-preset="hiit8x45_15_60_30" class="card card-select group w-full" type="button" title="Load HIIT: 8 rounds (45s work, 15s rest) + warmup/cooldown">
+                            <div class="flex flex-col gap-2 text-left sm:text-center">
+                                <span class="text-2xl">⚡HIIT: 8 Rounds</span>
+                                <p class="text-xs text-slate-400 leading-snug">8 × (45s work, 15s rest) + 60s warmup + 30s cooldown (~10:00 total)</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
             </div>
             <button data-type="emom" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
                 <div class="flex flex-col gap-2 text-center sm:text-center">
@@ -70,6 +100,14 @@
                     <p class="text-xs text-slate-400 leading-snug">Repeat a tiny fixed interval for many reps (e.g. 5s × 100).</p>
                 </div>
             </button>
+            <!-- New Countdown Type Card -->
+            <button data-type="countdown" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
+                <div class="flex flex-col gap-2 text-center sm:text-center">
+                    <span class="text-2xl">⏳</span>
+                    <span class="font-semibold text-lg">Timer</span>
+                    <p class="text-xs text-slate-400 leading-snug">Simple countdown — set a max time and go.</p>
+                </div>
+            </button>
         </section>
 
         <!-- Screen: Configure -->
@@ -84,6 +122,7 @@
                                 <option value="hiit">HIIT</option>
                                 <option value="custom">Custom</option>
                                 <option value="micro">Micro (Tiny Fixed Interval)</option>
+                                <option value="countdown">Timer (Countdown)</option>
                             </select>
                             <p id="typeHelp" class="sr-only">Select the type of workout to configure.</p>
                         </div>
@@ -154,7 +193,7 @@
                                 <button id="startBtn" class="btn-primary" type="button" title="Start workout (Space)" aria-label="Start workout">Start</button>
                                 <button id="pauseBtn" class="btn-secondary" type="button" title="Pause workout (Space)" aria-label="Pause workout">Pause</button>
                                 <button id="skipBtn" class="btn-subtle" type="button" disabled>Skip</button>
-                                <button id="markBtn" class="btn-subtle ml-10" type="button" title="Mark current time" aria-label="Mark current time">Mark</button>
+                                <button id="markBtn" class="btn-subtle ml-10" type="button" title="Mark current time" aria-label="Mark current time">📌 Mark</button>
                             </div>
                             <div class="flex items-center justify-center gap-4 text-xs text-slate-400">
                                 <label class="inline-flex items-center gap-1">

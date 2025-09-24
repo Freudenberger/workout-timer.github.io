@@ -4,7 +4,7 @@
 
 Lightweight interval workout timer
 
-EMOM • Tabata • HIIT • Custom Multi‑Exercise • Micro
+EMOM • Tabata • HIIT • Custom Multi‑Exercise • Micro • Countdown
 
 Pure HTML + vanilla JS.
 
@@ -14,7 +14,7 @@ Just open and train.
 
 ## ✨ Highlights
 
-- Workout types: **EMOM**, **Tabata**, **HIIT**, **Custom (multi‑exercise per round)**, **Micro (tiny repeating interval)**
+- Workout types: **EMOM**, **Tabata**, **HIIT**, **Custom (multi‑exercise per round)**, **Micro (tiny repeating interval)**, **Countdown (simple timer)**
 - Adaptive form: prep, warmup, work, rest, between‑round, cooldown, exercises/round, micro reps
 - Live sequence + total duration preview
 - Start • Pause/Resume • Reset • Skip • Auto‑restart
@@ -30,15 +30,26 @@ Just open and train.
 
 GitHub Pages friendly — drop the folder in a repo named `username.github.io` or enable Pages for this project.
 
+## ⚡ Quick Presets
+
+From the main page, you can load ready‑made workouts:
+
+- 5 Tabatas in a row — 5 blocks of Tabata (8 × 20s/10s) with 60s between blocks
+- 10‑min EMOM — 10 rounds of 60s work per minute (no rest)
+- Micro: 100 Burpees — 100 reps with a 4s interval per rep
+
+These presets simply prefill the configuration and jump you to the timer. You can still tweak values in the Config screen if desired (use Copy URL to share).
+
 ## 🧪 Workout Types
 
-| Type   | Core Idea                                               | Key Fields                                                                 |
-| ------ | ------------------------------------------------------- | -------------------------------------------------------------------------- |
-| EMOM   | Work inside each 60s block                              | prep, rounds, work                                                         |
-| Tabata | Classic 20/10 style (configurable)                      | prep, rounds, work, rest                                                   |
-| HIIT   | Warmup + repeated work/rest + optional cooldown         | prep, warmup, rounds, work, rest, cooldown                                 |
-| Custom | Multiple exercises per round + between rounds rest      | prep, rounds, exercisesPerRound, exerciseWork, exerciseRest, betweenRounds |
-| Micro  | Repeat a tiny fixed interval many times (e.g. 5s × 100) | prep, reps, interval                                                       |
+| Type      | Core Idea                                               | Key Fields                                                                 |
+| --------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| EMOM      | Work inside each 60s block                              | prep, rounds, work                                                         |
+| Tabata    | Classic 20/10 style (configurable)                      | prep, rounds, work, rest                                                   |
+| HIIT      | Warmup + repeated work/rest + optional cooldown         | prep, warmup, rounds, work, rest, cooldown                                 |
+| Custom    | Multiple exercises per round + between rounds rest      | prep, rounds, exercisesPerRound, exerciseWork, exerciseRest, betweenRounds |
+| Micro     | Repeat a tiny fixed interval many times (e.g. 5s × 100) | prep, reps, interval                                                       |
+| Countdown | Simple single countdown timer                           | prep, total                                                                |
 
 ## ⏱️ Interval Shape
 
