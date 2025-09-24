@@ -162,14 +162,7 @@
 
         <!-- Screen: Timer -->
         <section id="screenTimer" class="screen hidden w-full max-w-3xl mx-auto space-y-6" aria-labelledby="timerHeading">
-            <div class="flex gap-3">
-                <button id="timerBackBtn" class="btn-subtle" type="button">Back to Config</button>
-                <button id="timerCopyBtn" class="btn-subtle" type="button" title="Copy shareable URL for this workout" aria-label="Copy shareable URL for this workout">Copy URL</button>
-                <span class="ml-auto">
-                    <button id="resetBtn" class="btn-secondary ml-auto" type="button" title="Reset workout" aria-label="Reset workout">Reset</button>
-                    <button id="timerRestartBtn" class="btn-secondary ml-auto" type="button" title="Rebuild & restart">Restart</button>
-                </span>
-            </div>
+
             <div class="grid gap-4">
                 <div class="space-y-6">
                     <div class="card relative overflow-hidden isolate">
@@ -215,7 +208,14 @@
                             </div>
                         </div>
                     </div>
-
+                    <div class="flex gap-3" id="timerTopBar">
+                        <button id="timerBackBtn" class="btn-subtle" type="button">Back to Config</button>
+                        <button id="timerCopyBtn" class="btn-subtle" type="button" title="Copy shareable URL for this workout" aria-label="Copy shareable URL for this workout">Copy URL</button>
+                        <span class="ml-auto">
+                            <button id="resetBtn" class="btn-secondary ml-auto" type="button" title="Reset workout" aria-label="Reset workout">Reset</button>
+                            <button id="timerRestartBtn" class="btn-secondary ml-auto" type="button" title="Rebuild & restart">Restart</button>
+                        </span>
+                    </div>
                     <div class="card" aria-labelledby="logHeading">
                         <h2 id="logHeading" class="text-lg font-semibold mb-3">Rounds Log</h2>
                         <ul id="roundLog" class="text-xs md:text-sm space-y-1 max-h-56 overflow-auto pr-1 font-mono" aria-live="off"></ul>

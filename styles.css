@@ -420,6 +420,13 @@ body.phase-cooldown .timer-dial::before {
   letter-spacing: 0.05em;
   color: #94a3b8;
 }
+/* Reserve balanced space for seconds and min:sec columns */
+#dynamicFields td:nth-child(2) {
+  width: 28%;
+}
+#dynamicFields td:nth-child(3) {
+  width: 24%;
+}
 #dynamicFields tr {
   position: relative;
 }
@@ -466,6 +473,42 @@ body.phase-cooldown .timer-dial::before {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-md);
   padding: 0.55rem 0.75rem;
+}
+
+/* Time split (minutes / seconds) inputs */
+.time-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.time-split input[type="number"] {
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.65rem;
+  width: 4.25rem; /* override Tailwind w-20 for a tighter fit */
+  /* Hide native spinners for a cleaner +/- UI */
+  -moz-appearance: textfield;
+}
+.time-split input[type="number"]:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.time-split input[type="number"]:disabled {
+  opacity: 0.6;
+}
+.time-split input[type="number"]::-webkit-outer-spin-button,
+.time-split input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.time-split span {
+  color: #94a3b8; /* subtle unit label */
+  font-size: 0.7rem;
+  line-height: 1;
+  margin-inline: 0.15rem;
 }
 
 /* Checkboxes */

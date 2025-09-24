@@ -455,6 +455,15 @@ const quickPresets = {
     reps: 100,
     interval: 4,
   },
+  hiit8x45_15_60_30: {
+    type: "hiit",
+    prep: 10,
+    rounds: 8,
+    work: 45,
+    rest: 15,
+    warmup: 60,
+    cooldown: 30,
+  },
 };
 
 els.quickPresetBtns.forEach((btn) => {
@@ -470,6 +479,7 @@ els.quickPresetBtns.forEach((btn) => {
 });
 
 // Dynamic form fields builder
+// Duration fields get an additional minutes/seconds split UI that stays in sync with the raw seconds input.
 const fieldDefs = {
   rounds: { label: "Rounds", min: 1, max: 200 },
   work: { label: "Work (s)", min: 1, max: 3600 }, // legacy (non-custom multi-exercise)
@@ -485,6 +495,64 @@ const fieldDefs = {
   interval: { label: "Interval (s)", min: 1, max: 3600 },
   total: { label: "Total Time (s)", min: 1, max: 24 * 3600 },
 };
+
+// Keys that represent durations (seconds). These will get a minutes/seconds split UI.
+const durationKeys = new Set([
+  "work",
+  "rest",
+  "warmup",
+  "cooldown",
+  "prep",
+  "betweenRounds",
+  "exerciseWork",
+  "exerciseRest",
+  "interval",
+  "total",
+]);
+
+function isDurationKey(key) {
+  return durationKeys.has(key);
+}
+
+function clampSecondsForKey(key, seconds) {
+  const def = fieldDefs[key];
+  if (!def) return seconds;
+  let v = seconds;
+  if (typeof def.min === "number") v = Math.max(def.min, v);
+  if (typeof def.max === "number") v = Math.min(def.max, v);
+  return v;
+}
+
+function syncSecondsToSplit(key, totalSeconds) {
+  const minEl = document.getElementById(`f_${key}_min`);
+  const secEl = document.getElementById(`f_${key}_sec`);
+  if (!minEl || !secEl) return;
+  const safe = Math.max(0, Math.floor(totalSeconds || 0));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  minEl.value = String(m);
+  secEl.value = String(s);
+}
+
+function syncSplitToSecondsAndBuild(key) {
+  const mainEl = document.getElementById(`f_${key}`);
+  const minEl = document.getElementById(`f_${key}_min`);
+  const secEl = document.getElementById(`f_${key}_sec`);
+  if (!mainEl || !minEl || !secEl) return;
+  let m = parseInt(minEl.value, 10);
+  let s = parseInt(secEl.value, 10);
+  if (isNaN(m)) m = 0;
+  if (isNaN(s)) s = 0;
+  // Allow seconds overflow/underflow; we'll normalize via total seconds then reflect back
+  let total = m * 60 + s;
+  if (total < 0) total = 0;
+  total = clampSecondsForKey(key, total);
+  // Reflect any clamping back to the split UI
+  syncSecondsToSplit(key, total);
+  mainEl.value = String(total);
+  // Trigger the same path as typing into the main input
+  mainEl.dispatchEvent(new Event("input"));
+}
 
 const typeFieldMap = {
   emom: ["prep", "rounds", "work"],
@@ -510,14 +578,62 @@ function renderFields(type) {
       .map((key) => {
         const d = fieldDefs[key];
         const val = cfg[key] ?? "";
+        const isDur = isDurationKey(key);
+        const minutes = isDur ? Math.floor((val || 0) / 60) : 0;
+        const seconds = isDur ? Math.max(0, (val || 0) % 60) : 0;
+        const maxMin =
+          isDur && typeof d.max === "number" ? Math.floor(d.max / 60) : "";
         return `<tr>
-          <td class="py-2 pr-4 text-left">${d.label}</td>
-          <td class="py-2">
-            <div class="number-stepper">
-              <button type="button" class="step-btn" data-step="-1" aria-label="Decrease ${d.label}" data-target="f_${key}">−</button>
-              <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}" data-key="${key}" min="${d.min}" max="${d.max}" value="${val}" class="field text-base" aria-label="${d.label}" />
-              <button type="button" class="step-btn" data-step="1" aria-label="Increase ${d.label}" data-target="f_${key}">+</button>
-            </div>
+          <td class="py-2 pr-4 text-left align-middle">${d.label}</td>
+          
+          <td class="py-2 align-middle split_controls">
+            ${
+              isDur
+                ? `<input type="hidden" id="f_${key}" data-key="${key}" value="${val}" />`
+                : `<div class="number-stepper">
+                    <button type="button" class="step-btn" data-step="-1" tabindex="-1" aria-label="Decrease ${d.label}" data-target="f_${key}">−</button>
+                    <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}" data-key="${key}" min="${d.min}" max="${d.max}" value="${val}" class="field text-base" aria-label="${d.label}" />
+                    <button type="button" class="step-btn" data-step="1" tabindex="-1" aria-label="Increase ${d.label}" data-target="f_${key}">+</button>
+                   </div>`
+            }
+            ${
+              isDur
+                ? `<div id="f_${key}_split" class="time-split flex items-center gap-2">
+                     <div class="number-stepper">
+                       <button type="button" class="step-btn" tabindex="-1" data-step="-1" aria-label="Decrease ${
+                         d.label
+                       } Minutes" data-target="f_${key}_min">−</button>
+                       <label class="sr-only" for="f_${key}_min">${
+                    d.label
+                  } Minutes</label>
+                       <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}_min" min="0" ${
+                    maxMin !== "" ? `max="${maxMin}"` : ""
+                  } value="${minutes}" class="field text-sm w-20" aria-label="${
+                    d.label
+                  } Minutes" />
+                       <button type="button" class="step-btn" tabindex="-1" data-step="1" aria-label="Increase ${
+                         d.label
+                       } Minutes" data-target="f_${key}_min">+</button>
+                     </div>
+                     <span class="text-xs text-slate-400">m</span>
+                     <div class="number-stepper">
+                       <button type="button" class="step-btn" tabindex="-1" data-step="-1" aria-label="Decrease ${
+                         d.label
+                       } Seconds" data-target="f_${key}_sec">−</button>
+                       <label class="sr-only" for="f_${key}_sec">${
+                    d.label
+                  } Seconds</label>
+                       <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}_sec" min="0" max="59" value="${seconds}" class="field text-sm w-20" aria-label="${
+                    d.label
+                  } Seconds" />
+                       <button type="button" class="step-btn" tabindex="-1" data-step="1" aria-label="Increase ${
+                         d.label
+                       } Seconds" data-target="f_${key}_sec">+</button>
+                     </div>
+                     <span class="text-xs text-slate-400">s</span>
+                   </div>`
+                : ""
+            }
           </td>
         </tr>`;
       })
@@ -526,6 +642,12 @@ function renderFields(type) {
   // attach listeners
   $$("input[data-key]", els.dynamicFields).forEach((inp) => {
     inp.addEventListener("input", () => {
+      const key = inp.dataset.key;
+      // If this is a duration field, sync split UI from the main seconds input
+      if (isDurationKey(key)) {
+        const v = parseInt(inp.value, 10);
+        syncSecondsToSplit(key, isNaN(v) ? 0 : v);
+      }
       build();
     });
   });
@@ -538,13 +660,64 @@ function renderFields(type) {
       const step = parseInt(btn.dataset.step, 10) || 0;
       let current = parseInt(inp.value, 10);
       if (isNaN(current)) current = 0;
-      const min = parseInt(inp.min, 10);
-      const max = parseInt(inp.max, 10);
-      let next = current + step * mult;
-      if (!isNaN(min)) next = Math.max(min, next);
-      if (!isNaN(max)) next = Math.min(max, next);
-      inp.value = next;
-      inp.dispatchEvent(new Event("input"));
+      // Determine which kind of input this is and sync appropriately
+      const m = id.match(/^f_(.+)_(min|sec)$/);
+      if (m) {
+        const durKey = m[1];
+        const part = m[2];
+        if (part === "min") {
+          // Minutes stepper: simple clamp to min/max
+          const minAttr = parseInt(inp.min, 10);
+          const maxAttr = parseInt(inp.max, 10);
+          let next = current + step * mult;
+          if (!isNaN(minAttr)) next = Math.max(minAttr, next);
+          if (!isNaN(maxAttr)) next = Math.min(maxAttr, next);
+          inp.value = String(next);
+          syncSplitToSecondsAndBuild(durKey);
+        } else {
+          // Seconds stepper: rollover into minutes when exceeding 0..59
+          const minInput = document.getElementById(`f_${durKey}_min`);
+          let minVal = parseInt(minInput?.value ?? "0", 10);
+          if (isNaN(minVal)) minVal = 0;
+          const maxMinAttr = parseInt(minInput?.max ?? "", 10);
+          const maxMin = isNaN(maxMinAttr) ? Infinity : maxMinAttr;
+          const nextRaw = current + step * mult;
+          if (nextRaw > 59) {
+            const carry = Math.floor(nextRaw / 60);
+            minVal = Math.min(maxMin, minVal + carry);
+            const newSec = nextRaw % 60;
+            inp.value = String(newSec);
+            if (minInput) minInput.value = String(minVal);
+          } else if (nextRaw < 0) {
+            // If already at total 0, keep at 0 but still sync so total min clamps if needed
+            if (minVal === 0 && current === 0) {
+              inp.value = "0";
+              syncSplitToSecondsAndBuild(durKey);
+              return;
+            }
+            const borrow = Math.ceil(Math.abs(nextRaw) / 60);
+            const deficit = Math.abs(nextRaw) % 60;
+            const newMinVal = Math.max(0, minVal - borrow);
+            const newSec = (60 - deficit) % 60;
+            inp.value = String(newSec);
+            if (minInput) minInput.value = String(newMinVal);
+          } else {
+            inp.value = String(nextRaw);
+          }
+          syncSplitToSecondsAndBuild(durKey);
+        }
+      } else {
+        // Possibly a main seconds or non-duration input
+        const key = inp.dataset.key;
+        const min = parseInt(inp.min, 10);
+        const max = parseInt(inp.max, 10);
+        let next = current + step * mult;
+        if (!isNaN(min)) next = Math.max(min, next);
+        if (!isNaN(max)) next = Math.min(max, next);
+        inp.value = String(next);
+        if (isDurationKey(key)) syncSecondsToSplit(key, next);
+        inp.dispatchEvent(new Event("input"));
+      }
     };
     btn.addEventListener("click", (e) => activate(e.shiftKey ? 5 : 1));
     btn.addEventListener("keydown", (e) => {
@@ -553,6 +726,16 @@ function renderFields(type) {
         activate(e.shiftKey ? 5 : 1);
       }
     });
+  });
+
+  // Attach listeners for minutes/seconds split inputs
+  durationKeys.forEach((key) => {
+    const minEl = document.getElementById(`f_${key}_min`);
+    const secEl = document.getElementById(`f_${key}_sec`);
+    if (minEl)
+      minEl.addEventListener("input", () => syncSplitToSecondsAndBuild(key));
+    if (secEl)
+      secEl.addEventListener("input", () => syncSplitToSecondsAndBuild(key));
   });
 }
 
@@ -593,6 +776,8 @@ function applyConfig(cfg) {
   $$("input[data-key]", els.dynamicFields).forEach((inp) => {
     const key = inp.dataset.key;
     if (cfg[key] != null) inp.value = cfg[key];
+    // Also reflect into split inputs when applicable
+    if (isDurationKey(key)) syncSecondsToSplit(key, cfg[key] ?? 0);
   });
 }
 
