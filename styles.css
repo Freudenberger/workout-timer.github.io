@@ -444,6 +444,19 @@ body.phase-cooldown .timer-dial::before {
   );
 }
 
+.btn-warning {
+  @apply btn-base text-slate-900 shadow-lg;
+  background: #8b55037c;
+}
+.btn-warning:hover {
+  background: #975d06b4;
+  box-shadow: 0 4px 5px -5px rgba(251, 191, 36, 0.9);
+}
+.btn-warning:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
 .number-stepper {
   display: flex;
   align-items: stretch;
