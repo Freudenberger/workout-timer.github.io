@@ -1314,7 +1314,14 @@ function logRound(
     timeSinceLastMark = null,
   } = {}
 ) {
-  if (interval && interval.type !== "work" && !marked && !skipped) return;
+  if (
+    interval &&
+    interval.type !== "work" &&
+    interval.type !== "prep" &&
+    !marked &&
+    !skipped
+  )
+    return;
   const li = document.createElement("li");
   let icon = "✅";
   let iconClass = "text-emerald-400";
@@ -1330,6 +1337,9 @@ function logRound(
   } else if (skipped) {
     icon = "⏭️";
     iconClass = "text-orange-400";
+  } else if (interval && interval.type === "prep") {
+    icon = "⏰";
+    iconClass = "text-blue-400";
   }
 
   li.innerHTML = `<span class="${iconClass}">${icon}</span> <span>${label}</span>`;
@@ -1440,6 +1450,30 @@ els.timerBackBtn?.addEventListener("click", async () => {
     if (!ok) return;
     engine.pause();
   }
+  // Reset engine and clear state
+  engine.reset();
+  setControlState("idle");
+  // Reset mark tracking
+  lastMarkTime = null;
+  // Clear progress & logs
+  if (els.progressBar) {
+    els.progressBar.style.width = "0%";
+    els.progressBar.classList.remove(
+      "progress-bar-work",
+      "progress-bar-rest",
+      "progress-bar-prep",
+      "progress-bar-cooldown"
+    );
+  }
+  if (els.roundLog) {
+    els.roundLog.innerHTML = "";
+  }
+  document.body.classList.remove(
+    "phase-work",
+    "phase-rest",
+    "phase-prep",
+    "phase-cooldown"
+  );
   showScreen("screenConfig");
 });
 els.timerRestartBtn?.addEventListener("click", () => {

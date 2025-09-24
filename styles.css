@@ -224,13 +224,11 @@ select {
 .timer-dial {
   /* Converted from perfect circle to a responsive oval to save vertical space */
   position: relative;
-  width: clamp(20rem, 66vw, 34rem);
-  height: clamp(5rem, 20vw, 14rem); /* Reduce height vs width */
-  /* Elliptical border radius: first value controls horizontal radii, second vertical */
-  border-radius: 50% / 58%;
+  border-radius: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 .timer-dial::before,
 .timer-dial::after {
@@ -272,7 +270,7 @@ select {
   }
 }
 .timer-digits {
-  font-size: clamp(6.5rem, 9vw, 6.2rem);
+  font-size: 13.5rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-shadow: 0 0 22px rgba(16, 185, 129, 0.45),
@@ -303,11 +301,12 @@ body.phase-cooldown .timer-dial::before {
 
 /* Progress bar */
 #progressBarWrapper {
-  height: 0.9rem;
+  height: 1.9rem;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.06);
   position: relative;
   overflow: hidden;
+  width: 100%;
 }
 #progressBar {
   border-radius: inherit;
