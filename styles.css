@@ -1,6 +1,7 @@
 /* THEME OVERRIDE: Fancy Futuristic Redesign -------------------------------------------------- */
 /* Root tokens */
 :root {
+  --ui-scale: 1; /* 100% default */
   --color-bg: #05080f;
   --color-panel: rgba(17, 27, 39, 0.72);
   --color-panel-border: rgba(59, 130, 246, 0.15);
@@ -47,6 +48,7 @@ body {
   background-attachment: fixed;
   min-height: 100vh;
   position: relative;
+  padding-top: 30px; /* move content down so UI scale controls won't cover it */
 }
 body::after {
   content: "";
@@ -643,3 +645,56 @@ button:disabled {
   transition: color 300ms ease;
   z-index: 100;
 }
+
+/* === UI Scale Overrides (non-destructive, appended) === */
+/* Scale text and core controls using CSS variable --ui-scale and clamp to sane ranges */
+html { font-size: calc(16px * var(--ui-scale)); }
+body { font-size: 1rem; }
+
+/* Timer digits scale */
+.timer-digits {
+  font-size: clamp(3rem, 5rem * var(--ui-scale), 14rem);
+}
+@media (min-width: 768px) {
+  .timer-digits { font-size: clamp(5rem, 8rem * var(--ui-scale), 16rem); }
+}
+@media (min-width: 1200px) {
+  .timer-digits { font-size: clamp(8rem, 12rem * var(--ui-scale), 18rem); }
+}
+
+/* Interval label */
+.intervalLabel { font-size: calc(2.85rem * var(--ui-scale)) !important; }
+
+/* Buttons & selects padding and font size */
+.btn-primary { padding: calc(0.85rem * var(--ui-scale)) calc(1.55rem * var(--ui-scale)); }
+.btn-secondary { padding: calc(0.8rem * var(--ui-scale)) calc(1.4rem * var(--ui-scale)); }
+.btn-subtle { padding: calc(0.75rem * var(--ui-scale)) calc(1.3rem * var(--ui-scale)); }
+button, select { font-size: calc(1rem * var(--ui-scale)); }
+
+/* Inputs and steppers */
+.number-stepper > button { padding: calc(0.65rem * var(--ui-scale)) calc(0.9rem * var(--ui-scale)); font-size: calc(0.95rem * var(--ui-scale)); }
+.number-stepper > input { padding: calc(0.55rem * var(--ui-scale)) calc(0.75rem * var(--ui-scale)); font-size: calc(1rem * var(--ui-scale)); }
+.time-split input[type="number"] { padding: calc(0.5rem * var(--ui-scale)) calc(0.65rem * var(--ui-scale)); width: calc(4.25rem * var(--ui-scale)); }
+
+/* Checkbox size */
+input[type="checkbox"] { width: calc(1.1rem * var(--ui-scale)); height: calc(1.1rem * var(--ui-scale)); }
+
+/* Progress bar height */
+#progressBarWrapper { height: calc(1.9rem * var(--ui-scale)); }
+
+/* Scale controls placement */
+  .ui-scale-controls {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 50;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: var(--radius-pill);
+    padding: 4px 6px;
+    backdrop-filter: blur(8px);
+  }
+.ui-scale-controls .btn-subtle { padding: 0.35rem 0.55rem; }

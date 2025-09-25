@@ -361,6 +361,11 @@ const els = {
   timerRestartBtn: $("#timerRestartBtn"),
   timerCopyBtn: $("#timerCopyBtn"),
   toast: $("#toast"),
+  // UI scale controls
+  scaleMinusBtn: $("#scaleMinusBtn"),
+  scalePlusBtn: $("#scalePlusBtn"),
+  scaleResetBtn: $("#scaleResetBtn"),
+  scaleValue: $("#scaleValue"),
 };
 
 const defaultConfigs = {
@@ -979,6 +984,7 @@ if (els.importUrlBtn && els.importUrlInput) {
         announce("Configuration loaded from URL");
         clearQueryString();
         if (els.importStatus) {
+          els.importStatus.style.display = "block";
           els.importStatus.textContent = "Loaded ✅";
           els.importStatus.className =
             "text-[10px] tracking-wide text-emerald-400 h-4";
@@ -987,6 +993,7 @@ if (els.importUrlBtn && els.importUrlInput) {
       } else {
         announce("Invalid or unsupported parameters");
         if (els.importStatus) {
+          els.importStatus.style.display = "block";
           els.importStatus.textContent = "Invalid parameters";
           els.importStatus.className =
             "text-[10px] tracking-wide text-rose-400 h-4";
@@ -996,6 +1003,7 @@ if (els.importUrlBtn && els.importUrlInput) {
       console.warn("Import failed", e);
       announce("Failed to parse URL");
       if (els.importStatus) {
+        els.importStatus.style.display = "block";
         els.importStatus.textContent = "Parse error";
         els.importStatus.className =
           "text-[10px] tracking-wide text-rose-400 h-4";
@@ -1618,4 +1626,45 @@ window.addEventListener("keydown", (e) => {
     if (modalType === "prompt") modalResolve?.(true);
     else modalResolve?.(true);
   }
+});
+
+// ---------- UI Scale Controls (Cookie persistence) ----------
+const SCALE_COOKIE = "uiScale";
+function setCookie(name, value, days = 365) {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  const expires = "expires=" + d.toUTCString();
+  document.cookie = `${name}=${value};${expires};path=/`;
+}
+function getCookie(name) {
+  const cname = name + "=";
+  const parts = document.cookie.split(";");
+  for (let p of parts) {
+    p = p.trim();
+    if (p.startsWith(cname)) return p.substring(cname.length);
+  }
+  return null;
+}
+function applyScale(scale) {
+  const clamped = Math.max(0.5, Math.min(2, scale));
+  document.documentElement.style.setProperty("--ui-scale", String(clamped));
+  if (els.scaleValue) els.scaleValue.textContent = `${Math.round(clamped * 100)}%`;
+}
+function initScale() {
+  const fromCookie = parseFloat(getCookie(SCALE_COOKIE));
+  const initial = !isNaN(fromCookie) ? fromCookie : 1;
+  applyScale(initial);
+}
+function changeScale(delta) {
+  const current = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-scale")) || 1;
+  const next = Math.round((current + delta) * 100) / 100;
+  applyScale(next);
+  setCookie(SCALE_COOKIE, next);
+}
+initScale();
+els.scaleMinusBtn?.addEventListener("click", () => changeScale(-0.1));
+els.scalePlusBtn?.addEventListener("click", () => changeScale(+0.1));
+els.scaleResetBtn?.addEventListener("click", () => {
+  applyScale(1);
+  setCookie(SCALE_COOKIE, 1);
 });
