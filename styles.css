@@ -280,7 +280,22 @@ select {
   }
 }
 .timer-digits {
-  font-size: clamp(8rem, 12vw, 15rem);
+  font-size: 5rem; /* Default font size */
+}
+
+@media (min-width: 768px) {
+  .timer-digits {
+    font-size: 8rem; /* Medium screens */
+  }
+}
+
+@media (min-width: 1200px) {
+  .timer-digits {
+    font-size: 12rem; /* Large screens */
+  }
+}
+
+.timer-digits {
   max-width: 100%;
   font-weight: 700;
   letter-spacing: 0.04em;
