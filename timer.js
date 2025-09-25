@@ -1660,7 +1660,7 @@ function applyScale(scale) {
   if (appRoot) {
     if (isMobileDevice()) {
       appRoot.style.transform = `scale(${clamped})`;
-      appRoot.style.transformOrigin = "top center";
+      // appRoot.style.transformOrigin = "top center";
     } else {
       appRoot.style.transform = "";
       appRoot.style.transformOrigin = "";
