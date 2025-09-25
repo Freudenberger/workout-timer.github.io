@@ -1645,11 +1645,29 @@ function getCookie(name) {
   }
   return null;
 }
+
+// Mobile device detection
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 function applyScale(scale) {
   const clamped = Math.max(0.5, Math.min(2, scale));
   document.documentElement.style.setProperty("--ui-scale", String(clamped));
   if (els.scaleValue) els.scaleValue.textContent = `${Math.round(clamped * 100)}%`;
+  // On mobile, also apply transform: scale() to #appRoot for visual scaling
+  const appRoot = document.getElementById("appRoot");
+  if (appRoot) {
+    if (isMobileDevice()) {
+      appRoot.style.transform = `scale(${clamped})`;
+      appRoot.style.transformOrigin = "top center";
+    } else {
+      appRoot.style.transform = "";
+      appRoot.style.transformOrigin = "";
+    }
+  }
 }
+
 function initScale() {
   const fromCookie = parseFloat(getCookie(SCALE_COOKIE));
   const initial = !isNaN(fromCookie) ? fromCookie : 1;
