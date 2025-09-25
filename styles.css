@@ -48,7 +48,7 @@ body {
   background-attachment: fixed;
   min-height: 100vh;
   position: relative;
-  padding-top: 30px; /* move content down so UI scale controls won't cover it */
+  padding-top: 40px;
 }
 body::after {
   content: "";
