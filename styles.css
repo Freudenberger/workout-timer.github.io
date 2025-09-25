@@ -591,7 +591,6 @@ button:disabled {
   cursor: not-allowed;
   filter: grayscale(0.4);
 }
-
 /* Quick Presets: compact cards */
 .quick-presets .card {
   padding: 0.3rem !important;
@@ -625,10 +624,17 @@ button:disabled {
   .quick-presets .card p {
     display: none;
   }
+
+  .card-select > div > span {
+    text-align: center;
+    vertical-align: middle;
+    display: inline;
+  }
   .quick-presets .card-select > div {
     min-height: 2.8rem;
   }
 }
+
 
 .intervalLabel {
   font-size: 2.85rem !important;
