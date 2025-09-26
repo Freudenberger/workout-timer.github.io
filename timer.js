@@ -460,13 +460,22 @@ const quickPresets = {
     reps: 100,
     interval: 4,
   },
-  hiit8x45_15_60_30: {
+  hiit10x45_15_60_30: {
     type: "hiit",
     prep: 10,
-    rounds: 8,
+    rounds: 10,
     work: 45,
     rest: 15,
     warmup: 60,
+    cooldown: 30,
+  },
+  hiit10x40_20_30_30: {
+    type: "hiit",
+    prep: 10,
+    rounds: 10,
+    work: 40,
+    rest: 20,
+    warmup: 30,
     cooldown: 30,
   },
 };

@@ -639,12 +639,12 @@ button:disabled {
 
 
 .intervalLabel {
-  font-size: 2.85rem !important;
   max-width: 100%;
   margin-bottom: -0.4rem;
   transition: color 300ms ease;
-  z-index: 100;
-}
+  z-index: 100; 
+  font-size: calc(2.1rem * var(--ui-scale)) !important; }
+
 
 /* === UI Scale Overrides (non-destructive, appended) === */
 /* Scale text and core controls using CSS variable --ui-scale and clamp to sane ranges */
@@ -661,9 +661,6 @@ body { font-size: 1rem; }
 @media (min-width: 1200px) {
   .timer-digits { font-size: clamp(8rem, 12rem * var(--ui-scale), 18rem); }
 }
-
-/* Interval label */
-.intervalLabel { font-size: calc(2.85rem * var(--ui-scale)) !important; }
 
 /* Buttons & selects padding and font size */
 .btn-primary { padding: calc(0.85rem * var(--ui-scale)) calc(1.55rem * var(--ui-scale)); }
