@@ -695,3 +695,7 @@ input[type="checkbox"] { width: calc(1.1rem * var(--ui-scale)); height: calc(1.1
     backdrop-filter: blur(8px);
   }
 .ui-scale-controls .btn-subtle { padding: 0.35rem 0.55rem; }
+
+@media (max-width: 640px) {
+  .ui-scale-controls { top: 0px }
+}
