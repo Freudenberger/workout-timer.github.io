@@ -32,7 +32,7 @@
         <!-- Screen: Select Type -->
         <section id="screenSelect" class="screen active w-full flex flex-wrap justify-center items-start gap-6 pt-4" aria-labelledby="selectHeading">
             <h2 id="selectHeading" class="sr-only">Select Workout Type</h2>
-            <div class="w-full max-w-3xl order-first">
+            <div class="w-full max-w-4xl order-first">
                 <div class="flex flex-row sm:flex-row gap-3 items-stretch mb-2">
                     <div class="flex-1 min-w-[12rem]">
                         <input id="importUrlInput" type="url" placeholder="Import From URL / Query - Paste URL here..." class="import-input w-full field px-4 py-3 rounded-md bg-slate-800/70 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs" aria-label="URL to import workout configuration from" />
@@ -43,8 +43,13 @@
                 <!-- Quick Presets -->
                 <div class="mt-4 quick-presets">
                     <h3 class="text-sm font-semibold text-slate-300 mb-2">Quick Presets</h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                        <button data-preset="tabata5" class="card card-select group w-full" type="button" title="Load 5 Tabatas in a row">
+                    <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
+                        <button data-preset="tabata3" class="card card-select group w-full" type="button" title="Load 3 Tabatas in a row">
+                            <div class=" gap-2 text-center">
+                                <span class="text-2xl">🔥×3 Tabatas</span>
+                                <p class="text-xs text-slate-400 leading-snug">3 × (8 rounds 20/10). Between sets: 10s (~12:00 total)</p>
+                            </div>
+                        </button><button data-preset="tabata5" class="card card-select group w-full" type="button" title="Load 5 Tabatas in a row">
                             <div class=" gap-2 text-center">
                                 <span class="text-2xl">🔥×5 Tabatas</span>
                                 <p class="text-xs text-slate-400 leading-snug">5 × (8 rounds 20/10). Between sets: 10s (~24:00 total)</p>

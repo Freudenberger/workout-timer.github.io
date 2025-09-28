@@ -384,7 +384,7 @@ const defaultConfigs = {
   },
   // Micro: very small fixed interval repeated N times (e.g., every 5s do 1 rep / action)
   micro: { prep: 10, reps: 100, interval: 5 },
-  countdown: { prep: 0, total: 600 },
+  countdown: { prep: 10, total: 600 },
 };
 
 // Persistence
@@ -441,6 +441,15 @@ const quickPresets = {
     type: "custom",
     prep: 10,
     rounds: 5,
+    exercisesPerRound: 8,
+    exerciseWork: 20,
+    exerciseRest: 10,
+    betweenRounds: 10,
+  },
+  tabata3: {
+    type: "custom",
+    prep: 10,
+    rounds: 3,
     exercisesPerRound: 8,
     exerciseWork: 20,
     exerciseRest: 10,
