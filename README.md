@@ -49,6 +49,7 @@ On the main (Select) screen there's a "Your Pinned Workouts" section. From the C
 - Rename a pin when adding (prompt appears)
 - Click a pinned card to load and go straight to the timer
 - Remove a pin with the ✕ button that appears on hover/focus
+- Choose a custom emoji icon for each pin (defaults to a type‑based suggestion)
 
 Pins persist in `localStorage` under the key `workoutTimer.pinned.v1`.
 
@@ -93,7 +94,7 @@ Phase colors: work (emerald), rest (blue), prep/warmup (amber), cooldown (violet
 ## 📦 Persistence
 
 Presets are stored under `localStorage` key `workoutTimer.presets.v1` (simple JSON).
-Pinned quick‑access workouts are stored under `workoutTimer.pinned.v1` (array of { name, config }).
+Pinned quick‑access workouts are stored under `workoutTimer.pinned.v1` (array of { name, icon, config }).
 
 ## 📄 License
 

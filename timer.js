@@ -497,21 +497,29 @@ document.addEventListener("click", (e) => {
 const pinBtn = document.getElementById("pinWorkoutBtn");
 pinBtn?.addEventListener("click", async () => {
   const cfg = collectConfig();
-  // name prompt
-  const name = await promptDialog({
-    title: "Pin Workout",
-    label: "Pinned Name",
-    placeholder: "e.g. Lunch EMOM",
-    defaultValue: cfg.type ? cfg.type.toUpperCase() : "Workout",
-    confirmText: "Pin",
-    validate: (v) => v.trim().length > 0,
+  // suggest a default emoji based on workout type
+  const typeEmojiMap = {
+    emom: "⏲️",
+    tabata: "🔥",
+    hiit: "⚡",
+    custom: "🛠️",
+    micro: "🎯",
+    countdown: "⏳",
+  };
+  const defaultEmoji = typeEmojiMap[cfg.type] || "⭐";
+  const initialName = cfg.type ? cfg.type.toUpperCase() : "Workout";
+  const result = await pinConfigDialog({
+    defaultName: initialName,
+    defaultEmoji,
   });
-  if (!name) return;
+  if (!result) return; // cancelled
+  const { name, emoji: icon } = result;
   // if already pinned with same fingerprint, replace name
   const fp = configFingerprint(cfg);
   const existing = pinned.find((p) => p.fp === fp);
   if (existing) {
     existing.name = name;
+    existing.icon = icon;
     savePinned(pinned);
     renderPinned();
     announce("Pinned workout updated");
@@ -527,7 +535,7 @@ pinBtn?.addEventListener("click", async () => {
     if (!ok) return;
     pinned.shift();
   }
-  pinned.push({ name, config: cfg, fp, ts: Date.now() });
+  pinned.push({ name, icon, config: cfg, fp, ts: Date.now() });
   savePinned(pinned);
   renderPinned();
   announce("Workout pinned");
@@ -1751,6 +1759,66 @@ function promptDialog({
       if (!valid) return null;
     }
     return val || null;
+  });
+}
+
+// Combined dialog for pin configuration (emoji + name)
+async function pinConfigDialog({
+  title = "Pin Workout",
+  defaultName = "Workout",
+  defaultEmoji = "⭐",
+  emojis = ["🔥", "⚡", "⏲️", "🎯", "🛠️", "⏳", "⭐", "💪", "🏃", "🚴"],
+} = {}) {
+  modalType = "pin-config";
+  modalTitle.textContent = title;
+  modalMessage.textContent = "Choose emoji and name";
+  modalOk.textContent = "Pin";
+  modalCancel.textContent = "Cancel";
+  if (modalInputEl) {
+    modalInputEl.parentElement.remove();
+    modalInputEl = null;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "mt-3 flex flex-col gap-3";
+
+  const row = document.createElement("div");
+  row.className = "flex items-center gap-3";
+
+  const select = document.createElement("select");
+  select.className = "field text-sm flex-shrink-0 w-24";
+  emojis.forEach((e) => {
+    const opt = document.createElement("option");
+    opt.value = e;
+    opt.textContent = e;
+    select.appendChild(opt);
+  });
+  select.value = defaultEmoji;
+  select.setAttribute("aria-label", "Emoji");
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "field text-sm flex-1";
+  input.placeholder = defaultName;
+  input.value = defaultName;
+  input.setAttribute("aria-label", "Workout name");
+
+  row.appendChild(select);
+  row.appendChild(input);
+  wrap.appendChild(row);
+  modalMessage.insertAdjacentElement("afterend", wrap);
+  modalInputEl = input; // track for cleanup
+  modalRoot.classList.remove("hidden");
+  setTimeout(() => input.focus(), 40);
+  return new Promise((res) => {
+    modalResolve = (v) => {
+      res(v);
+      closeModal();
+    };
+  }).then((v) => {
+    if (v === false) return null;
+    const name = input.value.trim() || defaultName;
+    const emoji = select.value || defaultEmoji;
+    return { name, emoji };
   });
 }
 
