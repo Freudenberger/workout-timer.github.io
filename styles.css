@@ -621,6 +621,22 @@ button:disabled {
   gap: 0.25rem;
 }
 
+/* Pinned presets */
+#pinnedPresetsSection { }
+#pinnedPresets .card { position: relative; padding: 10px !important; }
+#pinnedPresets .remove-pin-btn { opacity: 0; transition: opacity 140ms ease, background 140ms ease; }
+#pinnedPresets .card:hover .remove-pin-btn, #pinnedPresets .remove-pin-btn:focus-visible { opacity: 1; }
+#pinnedPresets .remove-pin-btn { font-weight: 600; line-height: 1; }
+#pinnedPresets .remove-pin-btn:hover { background: rgba(239,68,68,0.9); color: #fff; }
+#pinnedPresets .remove-pin-btn:active { transform: scale(0.9); }
+#pinnedEmptyState.hidden { display: none; }
+#pinnedPresets .pinned-card { min-height: 2.2rem; }
+#pinnedPresets .pinned-card .text-2xl { font-size: 1.15rem; line-height: 1.1; }
+#pinnedPresets .pinned-card p { font-size: 0.65rem; }
+#pinnedPresets .pinned-card .remove-pin-btn { opacity: 0; transition: opacity 140ms ease; }
+#pinnedPresets .pinned-card:hover .remove-pin-btn, #pinnedPresets .pinned-card .remove-pin-btn:focus-visible { opacity: 1; }
+}
+
 /* On very small screens, hide description for ultra-compact layout */
 @media (max-width: 420px) {
   .quick-presets .card p {

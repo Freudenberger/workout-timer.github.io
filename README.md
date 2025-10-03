@@ -20,6 +20,7 @@ Just open and train.
 - Start • Pause/Resume • Reset • Skip • Auto‑restart
 - Sound beeps + optional voice (SpeechSynthesis)
 - Preset save/load (localStorage)
+- Pin up to 5 favorite workouts for one‑click access on the main screen
 - Accessible: ARIA live region, focus rings, high contrast, keyboard shortcuts
 - Pure client-side: Tailwind CDN + small `styles.css` + `timer.js` (no dependencies / tooling)
 
@@ -39,6 +40,17 @@ From the main page, you can load ready‑made workouts:
 - Micro: 100 Burpees — 100 reps with a 4s interval per rep
 
 These presets simply prefill the configuration and jump you to the timer. You can still tweak values in the Config screen if desired (use Copy URL to share).
+
+### 🔖 Pinned Workouts
+
+On the main (Select) screen there's a "Your Pinned Workouts" section. From the Config screen click the new "Pin" button (next to Copy URL / Save Preset) to store the current configuration for instant access later. You can:
+
+- Keep up to 5 pinned workouts (oldest can be replaced when full)
+- Rename a pin when adding (prompt appears)
+- Click a pinned card to load and go straight to the timer
+- Remove a pin with the ✕ button that appears on hover/focus
+
+Pins persist in `localStorage` under the key `workoutTimer.pinned.v1`.
 
 ## 🧪 Workout Types
 
@@ -81,6 +93,7 @@ Phase colors: work (emerald), rest (blue), prep/warmup (amber), cooldown (violet
 ## 📦 Persistence
 
 Presets are stored under `localStorage` key `workoutTimer.presets.v1` (simple JSON).
+Pinned quick‑access workouts are stored under `workoutTimer.pinned.v1` (array of { name, config }).
 
 ## 📄 License
 

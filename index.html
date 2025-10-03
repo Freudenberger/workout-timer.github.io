@@ -81,6 +81,15 @@
                         </button>
                     </div>
                 </div>
+                <!-- Pinned Workouts (user-defined) -->
+                <div class="mt-8" id="pinnedPresetsSection" aria-labelledby="pinnedPresetsHeading">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 id="pinnedPresetsHeading" class="text-sm font-semibold text-slate-300">Your Pinned Workouts</h3>
+                        <span id="pinnedCountBadge" class="text-[10px] text-slate-500">0 / 5</span>
+                    </div>
+                    <p id="pinnedEmptyState" class="text-[11px] text-slate-500 mb-2">Pin up to five favorite custom workouts from the Config screen to access them here quickly.</p>
+                    <div id="pinnedPresets" class="grid grid-cols-2 sm:grid-cols-6 gap-3"></div>
+                </div>
             </div>
             <button data-type="emom" class="card card-select group w-full sm:w-auto sm:max-w-xs" type="button">
                 <div class="flex flex-col gap-2 text-center sm:text-center">
@@ -160,6 +169,7 @@
                             <div class="ml-auto flex gap-2">
                                 <button id="copyLinkBtn" type="button" class="btn-subtle" title="Copy shareable URL" aria-label="Copy shareable URL">Copy URL</button>
                                 <button id="savePresetBtn" type="button" class="btn-subtle" title="Save current configuration as preset" aria-label="Save current configuration as preset">Save Preset</button>
+                                <button id="pinWorkoutBtn" type="button" class="btn-subtle" title="Pin this configuration to main screen" aria-label="Pin this configuration to main screen">Pin</button>
                                 <select id="presetSelect" class="field text-xs max-w-[15rem] min-w-[8rem]" title="Load preset" aria-label="Select a saved preset"></select>
                             </div>
                         </div>

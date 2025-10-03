@@ -389,6 +389,7 @@ const defaultConfigs = {
 
 // Persistence
 const STORAGE_KEY = "workoutTimer.presets.v1";
+const PINNED_KEY = "workoutTimer.pinned.v1";
 function loadPresets() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
@@ -400,6 +401,137 @@ function savePresets(p) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
 }
 let presets = loadPresets();
+
+// ----- Pinned Workouts -----
+function loadPinned() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(PINNED_KEY)) || [];
+    if (Array.isArray(arr)) return arr.slice(0, 5);
+    return [];
+  } catch {
+    return [];
+  }
+}
+function savePinned(p) {
+  localStorage.setItem(PINNED_KEY, JSON.stringify(p.slice(0, 5)));
+}
+let pinned = loadPinned();
+
+function configFingerprint(cfg) {
+  const sortedKeys = Object.keys(cfg).sort();
+  return sortedKeys.map((k) => `${k}:${cfg[k]}`).join("|");
+}
+
+function renderPinned() {
+  const container = document.getElementById("pinnedPresets");
+  const empty = document.getElementById("pinnedEmptyState");
+  const badge = document.getElementById("pinnedCountBadge");
+  if (!container) return;
+  container.innerHTML = "";
+  badge && (badge.textContent = `${pinned.length} / 5`);
+  if (pinned.length === 0) {
+    if (empty) empty.classList.remove("hidden");
+    return;
+  }
+  if (empty) empty.classList.add("hidden");
+  pinned.forEach((item, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "card card-select group w-full relative pinned-card";
+    btn.setAttribute("data-pin-index", idx);
+    btn.title = `Load pinned workout: ${item.name}`;
+    const approx = (() => {
+      try {
+        const t = WorkoutTypes[item.config.type];
+        if (t) {
+          const { sequence } = t(item.config);
+          const total = sequence.reduce((a, b) => a + (b.duration || 0), 0);
+          return formatTime(total);
+        }
+      } catch {}
+      return "";
+    })();
+    const icon = item.icon || "⭐";
+    const typeLabel = item.config.type ? item.config.type.toUpperCase() : "";
+    btn.innerHTML = `\n      <div class=\"flex flex-col gap-1 text-center\">\n        <span class=\"text-ml block\">${icon}${
+      item.name
+    }</span>\n        <p class=\"text-[10px] text-slate-400 leading-snug truncate\">${typeLabel}${
+      approx ? " • " + approx : ""
+    }</p>\n      </div>\n      <span class=\"absolute top-1 right-1 inline-flex items-center justify-center text-[10px] bg-slate-900/70 hover:bg-slate-900 text-slate-300 rounded-full w-5 h-5 remove-pin-btn\" title=\"Unpin\" aria-label=\"Remove pinned workout\">✕</span>`;
+    container.appendChild(btn);
+  });
+}
+renderPinned();
+
+// Delegate click handling for pinned presets (load or remove)
+document.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.classList.contains("remove-pin-btn")) {
+    const parent = target.closest("[data-pin-index]");
+    if (!parent) return;
+    const idx = parseInt(parent.getAttribute("data-pin-index"), 10);
+    if (!Number.isNaN(idx)) {
+      pinned.splice(idx, 1);
+      savePinned(pinned);
+      renderPinned();
+      announce("Pinned workout removed");
+    }
+    e.stopPropagation();
+    return;
+  }
+  const pinCard = target.closest("[data-pin-index]");
+  if (pinCard) {
+    const idx = parseInt(pinCard.getAttribute("data-pin-index"), 10);
+    const item = pinned[idx];
+    if (item) {
+      applyConfig(item.config);
+      build();
+      showScreen("screenTimer");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+});
+
+// Pin button logic
+const pinBtn = document.getElementById("pinWorkoutBtn");
+pinBtn?.addEventListener("click", async () => {
+  const cfg = collectConfig();
+  // name prompt
+  const name = await promptDialog({
+    title: "Pin Workout",
+    label: "Pinned Name",
+    placeholder: "e.g. Lunch EMOM",
+    defaultValue: cfg.type ? cfg.type.toUpperCase() : "Workout",
+    confirmText: "Pin",
+    validate: (v) => v.trim().length > 0,
+  });
+  if (!name) return;
+  // if already pinned with same fingerprint, replace name
+  const fp = configFingerprint(cfg);
+  const existing = pinned.find((p) => p.fp === fp);
+  if (existing) {
+    existing.name = name;
+    savePinned(pinned);
+    renderPinned();
+    announce("Pinned workout updated");
+    return;
+  }
+  if (pinned.length >= 5) {
+    // ask to replace oldest (index 0) or cancel
+    const ok = await confirmDialog({
+      title: "Pinned Full",
+      message: "You already have 5 pinned workouts. Replace the oldest?",
+      confirmText: "Replace",
+    });
+    if (!ok) return;
+    pinned.shift();
+  }
+  pinned.push({ name, config: cfg, fp, ts: Date.now() });
+  savePinned(pinned);
+  renderPinned();
+  announce("Workout pinned");
+});
 
 function updatePresetSelect() {
   els.presetSelect.innerHTML =
@@ -1666,13 +1798,16 @@ function getCookie(name) {
 
 // Mobile device detection
 function isMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
 }
 
 function applyScale(scale) {
   const clamped = Math.max(0.5, Math.min(2, scale));
   document.documentElement.style.setProperty("--ui-scale", String(clamped));
-  if (els.scaleValue) els.scaleValue.textContent = `${Math.round(clamped * 100)}%`;
+  if (els.scaleValue)
+    els.scaleValue.textContent = `${Math.round(clamped * 100)}%`;
   // On mobile, also apply transform: scale() to #appRoot for visual scaling
   const appRoot = document.getElementById("appRoot");
   if (appRoot) {
@@ -1692,7 +1827,10 @@ function initScale() {
   applyScale(initial);
 }
 function changeScale(delta) {
-  const current = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-scale")) || 1;
+  const current =
+    parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue("--ui-scale")
+    ) || 1;
   const next = Math.round((current + delta) * 100) / 100;
   applyScale(next);
   setCookie(SCALE_COOKIE, next);
