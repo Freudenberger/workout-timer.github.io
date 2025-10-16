@@ -322,8 +322,34 @@ function speak(text) {
 // ---------- UI Controller ----------
 const engine = new TimerEngine();
 
-// Track last mark timestamp for calculating time between marks
-let lastMarkTime = null;
+// Track last effective elapsed (excluding prep) for marker deltas
+let lastMarkEffectiveElapsed = null;
+
+// Compute effective elapsed/total/left excluding certain interval types
+function computeEffectiveTime(
+  sequence,
+  position,
+  remainingInCurrent,
+  exclude = new Set(["prep", "cooldown"])
+) {
+  let total = 0;
+  let elapsed = 0;
+  // total effective duration
+  for (let i = 0; i < sequence.length; i++) {
+    if (!exclude.has(sequence[i].type)) total += sequence[i].duration;
+  }
+  // elapsed effective duration
+  for (let i = 0; i < position; i++) {
+    const it = sequence[i];
+    if (!exclude.has(it.type)) elapsed += it.duration;
+  }
+  const current = sequence[position];
+  if (current && !exclude.has(current.type)) {
+    elapsed += Math.max(0, current.duration - remainingInCurrent);
+  }
+  const left = Math.max(0, total - elapsed);
+  return { total, elapsed, left };
+}
 
 const els = {
   workoutType: $("#workoutType"),
@@ -978,12 +1004,17 @@ function build() {
   els.intervalLabel.textContent = "Ready";
   els.mainTime.textContent = formatTime(sequence[0]?.duration || 0);
   const totalDur = engine.totalDuration();
+  const eff = computeEffectiveTime(
+    engine.sequence,
+    0,
+    engine.sequence[0]?.duration ?? 0
+  );
   const baseRoundInfo =
     type === "custom"
       ? "Round 0 • Exercise 0"
       : `Round 0 / ${meta.totalRounds ?? 0}`;
   els.roundInfo.textContent = `${baseRoundInfo} • Elapsed 00:00 • Left ${formatTime(
-    totalDur
+    eff.total
   )}`;
   els.nextInterval.textContent = sequence[1]
     ? `Next: ${sequence[1].label} (${formatTime(sequence[1].duration)})`
@@ -1203,7 +1234,7 @@ els.resetBtn.addEventListener("click", () => {
   build();
   setControlState("idle");
   // Reset mark tracking
-  lastMarkTime = null;
+  lastMarkEffectiveElapsed = null;
   // Clear progress & logs on explicit reset
   if (els.progressBar) {
     els.progressBar.style.width = "0%";
@@ -1232,24 +1263,27 @@ els.markBtn.addEventListener("click", () => {
   if (!currentInterval) return;
   const remaining = engine.remaining;
   const elapsedInCurrent = currentInterval.duration - remaining;
-  let totalElapsed = 0;
-  for (let i = 0; i < engine.position; i++) {
-    totalElapsed += engine.sequence[i].duration;
-  }
-  totalElapsed += elapsedInCurrent;
+  // Compute effective elapsed/left excluding preparation (and cooldown) intervals
+  // This aligns with the main header which also excludes prep/cooldown from effective time.
+  const { elapsed: effectiveElapsed, left: effectiveLeft } =
+    computeEffectiveTime(engine.sequence, engine.position, remaining);
 
   // Calculate time since last mark
-  const currentTime = performance.now() / 1000; // Convert to seconds
   let timeSinceLastMark = null;
-  if (lastMarkTime !== null) {
-    timeSinceLastMark = currentTime - lastMarkTime;
+  if (lastMarkEffectiveElapsed !== null) {
+    timeSinceLastMark = Math.max(
+      0,
+      effectiveElapsed - lastMarkEffectiveElapsed
+    );
   }
-  lastMarkTime = currentTime;
+  lastMarkEffectiveElapsed = effectiveElapsed;
 
   // Log the mark
   logRound(currentInterval, {
-    elapsed: totalElapsed,
-    remaining: engine.totalDuration() - totalElapsed,
+    // Report elapsed excluding preparation time
+    elapsed: effectiveElapsed,
+    // Report remaining excluding preparation (and cooldown) time
+    remaining: effectiveLeft,
     marked: true,
     timeSinceLastMark,
   });
@@ -1291,7 +1325,7 @@ function setControlState(state) {
 engine.on("load", () => setControlState("idle"));
 engine.on("start", (interval) => {
   // Reset mark tracking for new workout
-  lastMarkTime = null;
+  lastMarkEffectiveElapsed = null;
   setControlState("running");
   displayInterval(interval);
   if (els.soundToggle.checked) beeper.sequence();
@@ -1443,21 +1477,19 @@ function updateTick(remaining, interval) {
   const elapsed = interval.duration - remaining;
   const pct = Math.min(100, (elapsed / interval.duration) * 100);
   els.progressBar.style.width = pct + "%";
-  // Update elapsed / remaining global workout info
-  const total = engine.totalDuration();
-  // Compute how much time has elapsed overall: sum of completed intervals + (current interval duration - remaining)
-  let completed = 0;
-  for (let i = 0; i < engine.position; i++)
-    completed += engine.sequence[i].duration;
-  const overallElapsed = completed + (interval.duration - remaining);
-  const overallLeft = Math.max(0, total - overallElapsed);
+  // Update elapsed / remaining global workout info (effective: exclude prep/cooldown)
+  const { elapsed: effElapsed, left: effLeft } = computeEffectiveTime(
+    engine.sequence,
+    engine.position,
+    remaining
+  );
   // Preserve base round text (before the • Elapsed) by splitting if already present
   let base = els.roundInfo.textContent;
   const marker = " • Elapsed";
   if (base.includes(marker)) base = base.split(marker)[0];
   els.roundInfo.textContent = `${base} • Elapsed ${formatTime(
-    Math.max(0, Math.floor(overallElapsed))
-  )} • Left ${formatTime(Math.max(0, Math.ceil(overallLeft)))}`;
+    Math.max(0, Math.floor(effElapsed))
+  )} • Left ${formatTime(Math.max(0, Math.ceil(effLeft)))}`;
   // last 3 second beeps
   const rInt = Math.ceil(remaining);
   if (els.soundToggle.checked && rInt <= 3 && rInt > 0) {
