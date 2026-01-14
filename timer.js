@@ -1806,7 +1806,7 @@ async function pinConfigDialog({
   title = "Pin Workout",
   defaultName = "Workout",
   defaultEmoji = "⭐",
-  emojis = ["🔥", "⚡", "⏲️", "🎯", "🛠️", "⏳", "⭐", "💪", "🏃", "🚴"],
+  emojis = ["🔥", "⚡", "⏲️", "🎯", "🛠️", "⏳", "⭐", "💪", "🏃", "🚴", "😎", "🥵", "🐷", "🤼‍♂️", "💀", "☠", "👽"]
 } = {}) {
   modalType = "pin-config";
   modalTitle.textContent = title;
