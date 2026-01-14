@@ -954,7 +954,9 @@ function applyConfig(cfg) {
   if (type && type !== els.workoutType.value) {
     els.workoutType.value = type;
   }
-  currentConfigMemory[type] = { ...cfg };
+  // Merge incoming config with defaults so missing keys get sensible values
+  const merged = { ...(defaultConfigs[type] || {}), ...cfg };
+  currentConfigMemory[type] = { ...merged };
   if (type === "custom") {
     const c = currentConfigMemory[type];
     if (c.work != null && c.exerciseWork == null) c.exerciseWork = c.work;
@@ -962,11 +964,12 @@ function applyConfig(cfg) {
     if (c.exercisesPerRound == null) c.exercisesPerRound = 1;
   }
   renderFields(type);
+  // Populate inputs using the merged config so fields without explicit params show defaults
   $$("input[data-key]", els.dynamicFields).forEach((inp) => {
     const key = inp.dataset.key;
-    if (cfg[key] != null) inp.value = cfg[key];
+    if (merged[key] != null) inp.value = merged[key];
     // Also reflect into split inputs when applicable
-    if (isDurationKey(key)) syncSecondsToSplit(key, cfg[key] ?? 0);
+    if (isDurationKey(key)) syncSecondsToSplit(key, merged[key] ?? 0);
   });
 }
 
