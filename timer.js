@@ -1023,7 +1023,8 @@ function build() {
     ? `Next: ${sequence[1].label} (${formatTime(sequence[1].duration)})`
     : "";
   updateBadges();
-  updateConfigSummary(type, cfg, meta);
+  // Prefer the merged config (which includes defaults) when showing summary
+  updateConfigSummary(type, currentConfigMemory[type] || cfg, meta);
 }
 
 // -------- Shareable URL Logic --------
@@ -1684,14 +1685,17 @@ els.timerRestartBtn?.addEventListener("click", () => {
 
 function updateConfigSummary(type, cfg, meta) {
   if (!els.configSummary) return;
-  const entries = Object.entries(cfg).filter(([k]) => k !== "type");
+  // Use provided cfg (already merged) and present friendly labels
+  const displayCfg = cfg || currentConfigMemory[type] || {};
+  const entries = Object.entries(displayCfg).filter(([k]) => k !== "type");
   els.configSummary.innerHTML =
     `<li><strong>Type:</strong> ${type}</li>` +
     entries
-      .map(
-        ([k, v]) =>
-          `<li class="flex justify-between"><span>${k}</span><span class="tabular-nums">${v}</span></li>`
-      )
+      .map(([k, v]) => {
+        const label = fieldDefs[k]?.label || k;
+        const value = isDurationKey(k) ? formatTime(Number(v) || 0) : v;
+        return `<li class="flex justify-between"><span>${label}</span><span class="tabular-nums">${value}</span></li>`;
+      })
       .join("") +
     `<li class="flex justify-between border-t border-slate-700 mt-2 pt-2"><span>Total Duration</span><span>${els.totalDuration.textContent}</span></li>`;
 }
