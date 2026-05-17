@@ -305,6 +305,12 @@ select {
     0 0 42px rgba(16, 185, 129, 0.25);
 }
 
+body.soft-limit-exceeded .timer-digits {
+  color: #fbbf24;
+  text-shadow: 0 0 22px rgba(251, 191, 36, 0.5),
+    0 0 44px rgba(239, 68, 68, 0.3);
+}
+
 /* Phase thematic ring glow */
 body.phase-work .timer-dial::before {
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4),
@@ -327,6 +333,16 @@ body.phase-cooldown .timer-dial::before {
     inset 0 0 32px -10px rgba(124, 58, 237, 0.35);
 }
 
+body.soft-limit-exceeded .timer-dial::before {
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.45),
+    0 0 34px -4px rgba(245, 158, 11, 0.58),
+    inset 0 0 32px -10px rgba(239, 68, 68, 0.28);
+}
+
+body.soft-limit-exceeded .timer-dial::after {
+  opacity: 0.22;
+}
+
 /* Progress bar */
 #progressBarWrapper {
   height: 1.9rem;
@@ -342,6 +358,12 @@ body.phase-cooldown .timer-dial::before {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06),
     0 4px 14px -4px rgba(16, 185, 129, 0.6);
   transition: width 90ms linear;
+}
+
+#progressBar.progress-bar-soft-limit {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b 55%, #ef4444);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 4px 16px -4px rgba(239, 68, 68, 0.75);
 }
 
 /* Dynamic fields table */

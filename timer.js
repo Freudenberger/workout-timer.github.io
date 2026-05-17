@@ -8,9 +8,57 @@
 
 // ---------- Utilities ----------
 const pad = (n) => String(n).padStart(2, "0");
-const formatTime = (sec) => `${pad(Math.floor(sec / 60))}:${pad(sec % 60)}`;
+const formatTime = (sec) => {
+  if (!Number.isFinite(sec)) return "∞";
+  const safe = Math.max(0, Math.floor(sec));
+  return `${pad(Math.floor(safe / 60))}:${pad(safe % 60)}`;
+};
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function isCountUpInterval(interval) {
+  return interval?.mode === "up";
+}
+
+function getIntervalNominalDuration(interval) {
+  if (!interval) return 0;
+  if (isCountUpInterval(interval)) {
+    return Number.isFinite(interval.softLimit) ? interval.softLimit : Infinity;
+  }
+  return interval.duration;
+}
+
+function getIntervalElapsed(interval, currentValue) {
+  if (!interval) return 0;
+  const value = Math.max(0, Number(currentValue) || 0);
+  if (isCountUpInterval(interval)) return value;
+  return Math.max(0, interval.duration - value);
+}
+
+function getElapsedBeforePosition(sequence, position, exclude) {
+  let elapsed = 0;
+  for (let i = 0; i < position; i++) {
+    const it = sequence[i];
+    if (!exclude.has(it.type)) elapsed += getIntervalNominalDuration(it);
+  }
+  return elapsed;
+}
+
+function updateSoftLimitVisualState(interval, remaining) {
+  const exceeded =
+    isCountUpInterval(interval) &&
+    Number.isFinite(interval?.softLimit) &&
+    remaining > interval.softLimit;
+
+  document.body.classList.toggle("soft-limit-exceeded", exceeded);
+  if (els.progressBar) {
+    els.progressBar.classList.toggle("progress-bar-soft-limit", exceeded);
+  }
+  if (els.mainTime) {
+    els.mainTime.classList.toggle("soft-limit-exceeded", exceeded);
+  }
+  return exceeded;
+}
 
 // Live region announce (debounced) for accessibility
 const liveRegion = $("#liveRegion");
@@ -108,8 +156,8 @@ const WorkoutTypes = {
       config.exerciseRest !== undefined
         ? config.exerciseRest
         : config.rest !== undefined
-        ? config.rest
-        : 10;
+          ? config.rest
+          : 10;
     const betweenRounds = config.betweenRounds || 0;
     const prep = config.prep || 10;
     const sequence = [];
@@ -154,14 +202,34 @@ const WorkoutTypes = {
     return { sequence, meta: { totalRounds: reps } };
   },
   countdown(config) {
-    // Simple countdown: optional prep, then a single work interval of total seconds
-    const total = config.total || 600; // default 10 min
+    // Countdown supports two modes:
+    // - down: classic countdown with an end at total seconds
+    // - up: count from 00:00 forever, optionally with a soft limit for display/summary
+    const mode = config.mode || "down";
+    const total = Math.max(0, config.total ?? 600); // default 10 min, 0 = no upper limit in count-up mode
     const prep = config.prep || 0;
     const sequence = [];
     if (prep)
       sequence.push({ label: "Get Ready", type: "prep", duration: prep });
+    if (mode === "up") {
+      sequence.push({
+        label: "Count Up",
+        type: "work",
+        duration: total,
+        mode: "up",
+        softLimit: total > 0 ? total : null,
+      });
+      return {
+        sequence,
+        meta: {
+          totalRounds: 1,
+          mode: "up",
+          softLimit: total > 0 ? total : null,
+        },
+      };
+    }
     sequence.push({ label: "Timer", type: "work", duration: total });
-    return { sequence, meta: { totalRounds: 1 } };
+    return { sequence, meta: { totalRounds: 1, mode: "down" } };
   },
 };
 
@@ -181,7 +249,9 @@ class TimerEngine {
   load(sequence) {
     this.sequence = sequence.map((s, i) => ({ ...s, index: i }));
     this.position = 0;
-    this.remaining = this.sequence[0] ? this.sequence[0].duration : 0;
+    this.remaining = this.sequence[0]
+      ? this._initialValue(this.sequence[0])
+      : 0;
     this.state = "idle";
     this.startedAt = null;
     this.lastTick = null;
@@ -243,6 +313,12 @@ class TimerEngine {
   current() {
     return this.sequence[this.position];
   }
+  _initialValue(interval) {
+    return isCountUpInterval(interval) ? 0 : interval.duration;
+  }
+  _isOpenEnded(interval) {
+    return isCountUpInterval(interval) && !Number.isFinite(interval.softLimit);
+  }
   _advance() {
     this.position++;
     if (this.position >= this.sequence.length) {
@@ -251,23 +327,27 @@ class TimerEngine {
       this.emit("finish");
       return;
     }
-    this.remaining = this.sequence[this.position].duration;
+    this.remaining = this._initialValue(this.sequence[this.position]);
     this.emit("interval", this.current());
   }
   _tick(now) {
     if (this.state !== "running") {
       return;
     }
+    const current = this.current();
     const dt = (now - this.lastTick) / 1000;
     if (dt >= 0.05) {
-      this.remaining -= dt;
+      if (isCountUpInterval(current)) this.remaining += dt;
+      else this.remaining -= dt;
       this.lastTick = now;
-      if (this.remaining <= 0) {
+      if (!isCountUpInterval(current) && this.remaining <= 0) {
         this.emit("interval_complete", this.current());
         this._advance();
       }
       this.emit("tick", {
-        remaining: Math.max(0, this.remaining),
+        remaining: isCountUpInterval(current)
+          ? Math.max(0, this.remaining)
+          : Math.max(0, this.remaining),
         interval: this.current(),
         position: this.position,
       });
@@ -275,7 +355,12 @@ class TimerEngine {
     if (this.state === "running") this._raf = requestAnimationFrame(this._tick);
   }
   totalDuration() {
-    return this.sequence.reduce((a, b) => a + b.duration, 0);
+    return this.sequence.reduce((a, b) => {
+      const duration = getIntervalNominalDuration(b);
+      if (!Number.isFinite(duration)) return Infinity;
+      if (!Number.isFinite(a)) return Infinity;
+      return a + duration;
+    }, 0);
   }
 }
 
@@ -329,25 +414,29 @@ let lastMarkEffectiveElapsed = null;
 function computeEffectiveTime(
   sequence,
   position,
-  remainingInCurrent,
-  exclude = new Set(["prep", "cooldown"])
+  currentValue,
+  exclude = new Set(["prep", "cooldown"]),
 ) {
   let total = 0;
   let elapsed = 0;
   // total effective duration
   for (let i = 0; i < sequence.length; i++) {
-    if (!exclude.has(sequence[i].type)) total += sequence[i].duration;
+    if (!exclude.has(sequence[i].type)) {
+      const duration = getIntervalNominalDuration(sequence[i]);
+      if (!Number.isFinite(duration)) {
+        total = Infinity;
+      } else if (Number.isFinite(total)) {
+        total += duration;
+      }
+    }
   }
-  // elapsed effective duration
-  for (let i = 0; i < position; i++) {
-    const it = sequence[i];
-    if (!exclude.has(it.type)) elapsed += it.duration;
-  }
+  // elapsed effective duration before the current interval
+  elapsed += getElapsedBeforePosition(sequence, position, exclude);
   const current = sequence[position];
   if (current && !exclude.has(current.type)) {
-    elapsed += Math.max(0, current.duration - remainingInCurrent);
+    elapsed += getIntervalElapsed(current, currentValue);
   }
-  const left = Math.max(0, total - elapsed);
+  const left = Number.isFinite(total) ? Math.max(0, total - elapsed) : Infinity;
   return { total, elapsed, left };
 }
 
@@ -410,7 +499,7 @@ const defaultConfigs = {
   },
   // Micro: very small fixed interval repeated N times (e.g., every 5s do 1 rep / action)
   micro: { prep: 10, reps: 100, interval: 5 },
-  countdown: { prep: 10, total: 600 },
+  countdown: { prep: 10, mode: "down", total: 600 },
 };
 
 // Persistence
@@ -682,7 +771,8 @@ const fieldDefs = {
   exerciseRest: { label: "Exercise Rest (s)", min: 0, max: 3600 },
   reps: { label: "Reps (Intervals)", min: 1, max: 10000 },
   interval: { label: "Interval (s)", min: 1, max: 3600 },
-  total: { label: "Total Time (s)", min: 1, max: 24 * 3600 },
+  mode: { label: "Mode" },
+  total: { label: "Total / Soft Limit (s)", min: 0, max: 24 * 3600 },
 };
 
 // Keys that represent durations (seconds). These will get a minutes/seconds split UI.
@@ -757,7 +847,7 @@ const typeFieldMap = {
     "betweenRounds",
   ],
   micro: ["prep", "reps", "interval"],
-  countdown: ["prep", "total"],
+  countdown: ["prep", "mode", "total"],
 };
 
 function renderFields(type) {
@@ -772,6 +862,21 @@ function renderFields(type) {
         const seconds = isDur ? Math.max(0, (val || 0) % 60) : 0;
         const maxMin =
           isDur && typeof d.max === "number" ? Math.floor(d.max / 60) : "";
+        if (key === "mode") {
+          const modeVal = val || "down";
+          return `<tr>
+          <td class="py-2 pr-4 text-left align-middle">${d.label}</td>
+          <td class="py-2 align-middle split_controls">
+            <div class="flex flex-col gap-1">
+              <select id="f_${key}" data-key="${key}" class="field text-base" aria-label="${d.label}">
+                <option value="down" ${modeVal === "down" ? "selected" : ""}>Count Down</option>
+                <option value="up" ${modeVal === "up" ? "selected" : ""}>Count Up</option>
+              </select>
+              <p class="text-[11px] text-slate-400 leading-snug">Count up starts at 00:00. Set Total / Soft Limit to 0 for no upper limit.</p>
+            </div>
+          </td>
+        </tr>`;
+        }
         return `<tr>
           <td class="py-2 pr-4 text-left align-middle">${d.label}</td>
           
@@ -793,13 +898,13 @@ function renderFields(type) {
                          d.label
                        } Minutes" data-target="f_${key}_min">−</button>
                        <label class="sr-only" for="f_${key}_min">${
-                    d.label
-                  } Minutes</label>
+                         d.label
+                       } Minutes</label>
                        <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}_min" min="0" ${
-                    maxMin !== "" ? `max="${maxMin}"` : ""
-                  } value="${minutes}" class="field text-sm w-20" aria-label="${
-                    d.label
-                  } Minutes" />
+                         maxMin !== "" ? `max="${maxMin}"` : ""
+                       } value="${minutes}" class="field text-sm w-20" aria-label="${
+                         d.label
+                       } Minutes" />
                        <button type="button" class="step-btn" tabindex="-1" data-step="1" aria-label="Increase ${
                          d.label
                        } Minutes" data-target="f_${key}_min">+</button>
@@ -810,11 +915,11 @@ function renderFields(type) {
                          d.label
                        } Seconds" data-target="f_${key}_sec">−</button>
                        <label class="sr-only" for="f_${key}_sec">${
-                    d.label
-                  } Seconds</label>
+                         d.label
+                       } Seconds</label>
                        <input type="number" inputmode="numeric" pattern="[0-9]*" id="f_${key}_sec" min="0" max="59" value="${seconds}" class="field text-sm w-20" aria-label="${
-                    d.label
-                  } Seconds" />
+                         d.label
+                       } Seconds" />
                        <button type="button" class="step-btn" tabindex="-1" data-step="1" aria-label="Increase ${
                          d.label
                        } Seconds" data-target="f_${key}_sec">+</button>
@@ -829,7 +934,7 @@ function renderFields(type) {
       .join("")}
   </table>`;
   // attach listeners
-  $$("input[data-key]", els.dynamicFields).forEach((inp) => {
+  $$("[data-key]", els.dynamicFields).forEach((inp) => {
     inp.addEventListener("input", () => {
       const key = inp.dataset.key;
       // If this is a duration field, sync split UI from the main seconds input
@@ -933,8 +1038,12 @@ let currentConfigMemory = {}; // memory per type
 function collectConfig() {
   const type = els.workoutType.value;
   const cfg = { ...defaultConfigs[type] };
-  $$("input[data-key]", els.dynamicFields).forEach((inp) => {
+  $$("[data-key]", els.dynamicFields).forEach((inp) => {
     const k = inp.dataset.key;
+    if (k === "mode") {
+      cfg[k] = inp.value;
+      return;
+    }
     const v = parseInt(inp.value, 10);
     if (!isNaN(v)) cfg[k] = v;
   });
@@ -962,10 +1071,13 @@ function applyConfig(cfg) {
     if (c.work != null && c.exerciseWork == null) c.exerciseWork = c.work;
     if (c.rest != null && c.exerciseRest == null) c.exerciseRest = c.rest;
     if (c.exercisesPerRound == null) c.exercisesPerRound = 1;
+  } else if (type === "countdown") {
+    const c = currentConfigMemory[type];
+    if (!c.mode) c.mode = "down";
   }
   renderFields(type);
   // Populate inputs using the merged config so fields without explicit params show defaults
-  $$("input[data-key]", els.dynamicFields).forEach((inp) => {
+  $$("[data-key]", els.dynamicFields).forEach((inp) => {
     const key = inp.dataset.key;
     if (merged[key] != null) inp.value = merged[key];
     // Also reflect into split inputs when applicable
@@ -999,28 +1111,29 @@ function build() {
       const liClasses = ["seq-item", `seq-${clsType}`, i === 0 ? "current" : ""]
         .filter(Boolean)
         .join(" ");
+      const displayDuration = getIntervalNominalDuration(it);
       return `<li class="${liClasses}"><span class="seq-dot"></span><span class="seq-label">${
         it.label
-      }</span><span class="seq-time">${formatTime(it.duration)}</span></li>`;
+      }</span><span class="seq-time">${formatTime(displayDuration)}</span></li>`;
     })
     .join("");
   els.intervalLabel.textContent = "Ready";
-  els.mainTime.textContent = formatTime(sequence[0]?.duration || 0);
-  const totalDur = engine.totalDuration();
-  const eff = computeEffectiveTime(
-    engine.sequence,
-    0,
-    engine.sequence[0]?.duration ?? 0
-  );
+  els.mainTime.textContent = formatTime(engine.remaining);
+  const firstInterval = sequence[0];
+  const eff = computeEffectiveTime(engine.sequence, 0, engine.remaining);
   const baseRoundInfo =
-    type === "custom"
-      ? "Round 0 • Exercise 0"
-      : `Round 0 / ${meta.totalRounds ?? 0}`;
+    firstInterval && isCountUpInterval(firstInterval)
+      ? `Count Up • ${Number.isFinite(getIntervalNominalDuration(firstInterval)) ? `Soft Limit ${formatTime(getIntervalNominalDuration(firstInterval))}` : "No Limit"}`
+      : type === "custom"
+        ? "Round 0 • Exercise 0"
+        : `Round 0 / ${meta.totalRounds ?? 0}`;
   els.roundInfo.textContent = `${baseRoundInfo} • Elapsed 00:00 • Left ${formatTime(
-    eff.total
+    eff.total,
   )}`;
   els.nextInterval.textContent = sequence[1]
-    ? `Next: ${sequence[1].label} (${formatTime(sequence[1].duration)})`
+    ? `Next: ${sequence[1].label} (${formatTime(
+        getIntervalNominalDuration(sequence[1]),
+      )})`
     : "";
   updateBadges();
   // Prefer the merged config (which includes defaults) when showing summary
@@ -1033,7 +1146,8 @@ function configToQuery() {
   const params = new URLSearchParams();
   params.set("type", type);
   Object.entries(cfg).forEach(([k, v]) => {
-    if (typeof v === "number" && !isNaN(v)) params.set(k, String(v));
+    if (k === "mode" && typeof v === "string") params.set(k, v);
+    else if (typeof v === "number" && !isNaN(v)) params.set(k, String(v));
   });
   return params.toString();
 }
@@ -1056,7 +1170,7 @@ function clearQueryString(preserveKeys = []) {
     history.replaceState(
       null,
       "",
-      originPart + url.pathname + url.search + url.hash
+      originPart + url.pathname + url.search + url.hash,
     );
     return true;
   } catch (e) {
@@ -1092,6 +1206,10 @@ function applyParams(qs) {
     "total",
   ]);
   qs.forEach((val, key) => {
+    if (key === "mode") {
+      cfg.mode = val === "up" ? "up" : "down";
+      return;
+    }
     if (numericFields.has(key)) {
       const n = parseInt(val, 10);
       if (!isNaN(n)) cfg[key] = n;
@@ -1242,13 +1360,15 @@ els.resetBtn.addEventListener("click", () => {
   // Clear progress & logs on explicit reset
   if (els.progressBar) {
     els.progressBar.style.width = "0%";
+    els.progressBar.classList.remove("progress-bar-soft-limit");
     els.progressBar.classList.remove(
       "progress-bar-work",
       "progress-bar-rest",
       "progress-bar-prep",
-      "progress-bar-cooldown"
+      "progress-bar-cooldown",
     );
   }
+  document.body.classList.remove("soft-limit-exceeded");
   if (els.roundLog) {
     els.roundLog.innerHTML = "";
   }
@@ -1256,7 +1376,7 @@ els.resetBtn.addEventListener("click", () => {
     "phase-work",
     "phase-rest",
     "phase-prep",
-    "phase-cooldown"
+    "phase-cooldown",
   );
   announce("Reset");
 });
@@ -1266,7 +1386,6 @@ els.markBtn.addEventListener("click", () => {
   const currentInterval = engine.current();
   if (!currentInterval) return;
   const remaining = engine.remaining;
-  const elapsedInCurrent = currentInterval.duration - remaining;
   // Compute effective elapsed/left excluding preparation (and cooldown) intervals
   // This aligns with the main header which also excludes prep/cooldown from effective time.
   const { elapsed: effectiveElapsed, left: effectiveLeft } =
@@ -1277,7 +1396,7 @@ els.markBtn.addEventListener("click", () => {
   if (lastMarkEffectiveElapsed !== null) {
     timeSinceLastMark = Math.max(
       0,
-      effectiveElapsed - lastMarkEffectiveElapsed
+      effectiveElapsed - lastMarkEffectiveElapsed,
     );
   }
   lastMarkEffectiveElapsed = effectiveElapsed;
@@ -1346,20 +1465,17 @@ engine.on("interval", (interval) => {
 engine.on("interval_complete", (interval) => {
   if (els.soundToggle.checked) beeper.beep({ freq: 440 });
   // Log completed interval
-  let totalElapsed = 0;
-  for (let i = 0; i <= engine.position; i++) {
-    // include current since it completed
-    totalElapsed += engine.sequence[i].duration;
-  }
+  const totalElapsed =
+    getElapsedBeforePosition(engine.sequence, engine.position) +
+    getIntervalElapsed(interval, engine.remaining);
   const totalRemaining = engine.totalDuration() - totalElapsed;
   logRound(interval, { elapsed: totalElapsed, remaining: totalRemaining });
 });
 engine.on("skipped", (interval) => {
   // Calculate elapsed and remaining for logging
-  let totalElapsed = 0;
-  for (let i = 0; i < engine.position; i++) {
-    totalElapsed += engine.sequence[i].duration;
-  }
+  const totalElapsed =
+    getElapsedBeforePosition(engine.sequence, engine.position) +
+    getIntervalElapsed(interval, engine.remaining);
   // For skipped, remaining is the same as before skip, since we didn't complete it
   const totalRemaining = engine.totalDuration() - totalElapsed;
   logRound(interval, {
@@ -1373,13 +1489,9 @@ engine.on("pause", () => {
   // Log pause event
   const currentInterval = engine.current();
   if (currentInterval) {
-    const remaining = engine.remaining;
-    const elapsedInCurrent = currentInterval.duration - remaining;
-    let totalElapsed = 0;
-    for (let i = 0; i < engine.position; i++) {
-      totalElapsed += engine.sequence[i].duration;
-    }
-    totalElapsed += elapsedInCurrent;
+    const totalElapsed =
+      getElapsedBeforePosition(engine.sequence, engine.position) +
+      getIntervalElapsed(currentInterval, engine.remaining);
     logRound(null, {
       elapsed: totalElapsed,
       remaining: engine.totalDuration() - totalElapsed,
@@ -1405,40 +1517,51 @@ engine.on("finish", () => {
   }
 });
 engine.on("tick", ({ remaining, interval, position }) =>
-  updateTick(remaining, interval, position)
+  updateTick(remaining, interval, position),
 );
 
 function displayInterval(interval) {
   els.intervalLabel.textContent = interval.label;
-  const workIntervals = engine.sequence.filter((s) => s.type === "work");
-  const workIndex = workIntervals.indexOf(interval);
-  const totalWork = workIntervals.length;
-  // Try to infer exercises per round for custom type from meta (if available on engine?)
-  // Since meta isn't stored on engine we attempt pattern detection: labels starting with R# Ex # Work
-  let roundDisplay = 0;
-  if (/^R\d+ Ex \d+ Work/.test(interval.label)) {
-    const m = interval.label.match(/^R(\d+) Ex (\d+)/);
-    if (m) {
-      const rNum = parseInt(m[1], 10);
-      const exNum = parseInt(m[2], 10);
-      roundDisplay = rNum;
-      els.roundInfo.textContent = `Round ${rNum} • Exercise ${exNum}`; // elapsed/left appended in tick
+  if (isCountUpInterval(interval)) {
+    const limit = getIntervalNominalDuration(interval);
+    els.roundInfo.textContent = Number.isFinite(limit)
+      ? `Count Up • Soft Limit ${formatTime(limit)}`
+      : "Count Up • No Limit";
+    els.nextInterval.textContent = "";
+    els.mainTime.textContent = formatTime(engine.remaining);
+    updateSoftLimitVisualState(interval, engine.remaining);
+  } else {
+    updateSoftLimitVisualState(interval, 0);
+    const workIntervals = engine.sequence.filter((s) => s.type === "work");
+    const workIndex = workIntervals.indexOf(interval);
+    const totalWork = workIntervals.length;
+    // Try to infer exercises per round for custom type from meta (if available on engine?)
+    // Since meta isn't stored on engine we attempt pattern detection: labels starting with R# Ex # Work
+    let roundDisplay = 0;
+    if (/^R\d+ Ex \d+ Work/.test(interval.label)) {
+      const m = interval.label.match(/^R(\d+) Ex (\d+)/);
+      if (m) {
+        const rNum = parseInt(m[1], 10);
+        const exNum = parseInt(m[2], 10);
+        roundDisplay = rNum;
+        els.roundInfo.textContent = `Round ${rNum} • Exercise ${exNum}`; // elapsed/left appended in tick
+      }
     }
+    if (!roundDisplay) {
+      els.roundInfo.textContent = `Work ${workIndex + 1} / ${totalWork}`; // elapsed/left appended in tick
+    }
+    const next = engine.sequence[interval.index + 1];
+    els.nextInterval.textContent = next
+      ? `Next: ${next.label} (${formatTime(getIntervalNominalDuration(next))})`
+      : "";
+    els.mainTime.textContent = formatTime(getIntervalNominalDuration(interval));
   }
-  if (!roundDisplay) {
-    els.roundInfo.textContent = `Work ${workIndex + 1} / ${totalWork}`; // elapsed/left appended in tick
-  }
-  const next = engine.sequence[interval.index + 1];
-  els.nextInterval.textContent = next
-    ? `Next: ${next.label} (${formatTime(next.duration)})`
-    : "";
-  els.mainTime.textContent = formatTime(interval.duration);
   // Phase classes on body
   document.body.classList.remove(
     "phase-work",
     "phase-rest",
     "phase-prep",
-    "phase-cooldown"
+    "phase-cooldown",
   );
   document.body.classList.add("phase-" + interval.type);
   // Progress bar color classes
@@ -1446,7 +1569,7 @@ function displayInterval(interval) {
     "progress-bar-work",
     "progress-bar-rest",
     "progress-bar-prep",
-    "progress-bar-cooldown"
+    "progress-bar-cooldown",
   );
   els.progressBar.classList.add("progress-bar-" + interval.type);
   // Highlight current item in sequence preview
@@ -1462,37 +1585,44 @@ function displayFinished() {
   els.nextInterval.textContent = "";
   els.mainTime.textContent = "00:00";
   els.progressBar.style.width = "100%";
+  document.body.classList.remove("soft-limit-exceeded");
+  els.progressBar.classList.remove("progress-bar-soft-limit");
   els.progressBar.classList.remove(
     "progress-bar-work",
     "progress-bar-rest",
     "progress-bar-prep",
-    "progress-bar-cooldown"
+    "progress-bar-cooldown",
   );
   document.body.classList.remove(
     "phase-work",
     "phase-rest",
     "phase-prep",
-    "phase-cooldown"
+    "phase-cooldown",
   );
 }
 
 function updateTick(remaining, interval) {
   els.mainTime.textContent = formatTime(Math.ceil(remaining));
-  const elapsed = interval.duration - remaining;
-  const pct = Math.min(100, (elapsed / interval.duration) * 100);
+  const total = getIntervalNominalDuration(interval);
+  const elapsed = getIntervalElapsed(interval, remaining);
+  const pct =
+    Number.isFinite(total) && total > 0
+      ? Math.min(100, (elapsed / total) * 100)
+      : 0;
   els.progressBar.style.width = pct + "%";
+  updateSoftLimitVisualState(interval, remaining);
   // Update elapsed / remaining global workout info (effective: exclude prep/cooldown)
   const { elapsed: effElapsed, left: effLeft } = computeEffectiveTime(
     engine.sequence,
     engine.position,
-    remaining
+    remaining,
   );
   // Preserve base round text (before the • Elapsed) by splitting if already present
   let base = els.roundInfo.textContent;
   const marker = " • Elapsed";
   if (base.includes(marker)) base = base.split(marker)[0];
   els.roundInfo.textContent = `${base} • Elapsed ${formatTime(
-    Math.max(0, Math.floor(effElapsed))
+    Math.max(0, Math.floor(effElapsed)),
   )} • Left ${formatTime(Math.max(0, Math.ceil(effLeft)))}`;
   // last 3 second beeps
   const rInt = Math.ceil(remaining);
@@ -1514,7 +1644,7 @@ function logRound(
     paused = false,
     customMessage = null,
     timeSinceLastMark = null,
-  } = {}
+  } = {},
 ) {
   if (
     interval &&
@@ -1547,12 +1677,12 @@ function logRound(
   li.innerHTML = `<span class="${iconClass}">${icon}</span> <span>${label}</span>`;
   if (elapsed !== undefined && !customMessage) {
     li.innerHTML += ` <span class="text-slate-400 text-xs">(Elapsed: ${formatTime(
-      Math.floor(elapsed)
+      Math.floor(elapsed),
     )} | Left: ${formatTime(Math.ceil(remaining))})</span>`;
   }
   if (marked && timeSinceLastMark !== null) {
     li.innerHTML += ` <span class="text-slate-400 text-xs">(+${formatTime(
-      Math.floor(timeSinceLastMark)
+      Math.floor(timeSinceLastMark),
     )})</span>`;
   }
   if (marked) {
@@ -1620,7 +1750,7 @@ $$("#screenSelect button[data-type]").forEach((btn) =>
     build();
     showScreen("screenConfig");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  })
+  }),
 );
 
 els.backToSelectBtn?.addEventListener("click", async () => {
@@ -1660,13 +1790,15 @@ els.timerBackBtn?.addEventListener("click", async () => {
   // Clear progress & logs
   if (els.progressBar) {
     els.progressBar.style.width = "0%";
+    els.progressBar.classList.remove("progress-bar-soft-limit");
     els.progressBar.classList.remove(
       "progress-bar-work",
       "progress-bar-rest",
       "progress-bar-prep",
-      "progress-bar-cooldown"
+      "progress-bar-cooldown",
     );
   }
+  document.body.classList.remove("soft-limit-exceeded");
   if (els.roundLog) {
     els.roundLog.innerHTML = "";
   }
@@ -1674,7 +1806,7 @@ els.timerBackBtn?.addEventListener("click", async () => {
     "phase-work",
     "phase-rest",
     "phase-prep",
-    "phase-cooldown"
+    "phase-cooldown",
   );
   showScreen("screenConfig");
 });
@@ -1693,7 +1825,14 @@ function updateConfigSummary(type, cfg, meta) {
     entries
       .map(([k, v]) => {
         const label = fieldDefs[k]?.label || k;
-        const value = isDurationKey(k) ? formatTime(Number(v) || 0) : v;
+        const value =
+          k === "mode"
+            ? v === "up"
+              ? "Count Up"
+              : "Count Down"
+            : isDurationKey(k)
+              ? formatTime(Number(v) || 0)
+              : v;
         return `<li class="flex justify-between"><span>${label}</span><span class="tabular-nums">${value}</span></li>`;
       })
       .join("") +
@@ -1806,7 +1945,25 @@ async function pinConfigDialog({
   title = "Pin Workout",
   defaultName = "Workout",
   defaultEmoji = "⭐",
-  emojis = ["🔥", "⚡", "⏲️", "🎯", "🛠️", "⏳", "⭐", "💪", "🏃", "🚴", "😎", "🥵", "🐷", "🤼‍♂️", "💀", "☠", "👽"]
+  emojis = [
+    "🔥",
+    "⚡",
+    "⏲️",
+    "🎯",
+    "🛠️",
+    "⏳",
+    "⭐",
+    "💪",
+    "🏃",
+    "🚴",
+    "😎",
+    "🥵",
+    "🐷",
+    "🤼‍♂️",
+    "💀",
+    "☠",
+    "👽",
+  ],
 } = {}) {
   modalType = "pin-config";
   modalTitle.textContent = title;
@@ -1906,7 +2063,7 @@ function getCookie(name) {
 // Mobile device detection
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
+    navigator.userAgent,
   );
 }
 
@@ -1936,7 +2093,7 @@ function initScale() {
 function changeScale(delta) {
   const current =
     parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue("--ui-scale")
+      getComputedStyle(document.documentElement).getPropertyValue("--ui-scale"),
     ) || 1;
   const next = Math.round((current + delta) * 100) / 100;
   applyScale(next);

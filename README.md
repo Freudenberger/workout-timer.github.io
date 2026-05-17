@@ -4,7 +4,7 @@
 
 Lightweight interval workout timer
 
-EMOM • Tabata • HIIT • Custom Multi‑Exercise • Micro • Countdown
+EMOM • Tabata • HIIT • Custom Multi‑Exercise • Micro • Countdown / Count Up
 
 Pure HTML + vanilla JS.
 
@@ -14,7 +14,7 @@ Just open and train.
 
 ## ✨ Highlights
 
-- Workout types: **EMOM**, **Tabata**, **HIIT**, **Custom (multi‑exercise per round)**, **Micro (tiny repeating interval)**, **Countdown (simple timer)**
+- Workout types: **EMOM**, **Tabata**, **HIIT**, **Custom (multi‑exercise per round)**, **Micro (tiny repeating interval)**, **Countdown / Count Up (simple timer with optional soft limit)**
 - Adaptive form: prep, warmup, work, rest, between‑round, cooldown, exercises/round, micro reps
 - Live sequence + total duration preview
 - Start • Pause/Resume • Reset • Skip • Auto‑restart
@@ -62,7 +62,7 @@ Pins persist in `localStorage` under the key `workoutTimer.pinned.v1`.
 | HIIT      | Warmup + repeated work/rest + optional cooldown         | prep, warmup, rounds, work, rest, cooldown                                 |
 | Custom    | Multiple exercises per round + between rounds rest      | prep, rounds, exercisesPerRound, exerciseWork, exerciseRest, betweenRounds |
 | Micro     | Repeat a tiny fixed interval many times (e.g. 5s × 100) | prep, reps, interval                                                       |
-| Countdown | Simple single countdown timer                           | prep, total                                                                |
+| Countdown | Simple timer with down or up mode                       | prep, mode, total                                                          |
 
 ## ⏱️ Interval Shape
 
