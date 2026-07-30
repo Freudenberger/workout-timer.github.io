@@ -143,14 +143,8 @@
                 <div class="card">
                     <div class="flex flex-col gap-4">
                         <div>
-                            <select id="workoutType" class="field" aria-label="Select workout type">
-                                <option value="emom">EMOM (Every Minute On the Minute)</option>
-                                <option value="tabata">Tabata</option>
-                                <option value="hiit">HIIT</option>
-                                <option value="custom">Custom</option>
-                                <option value="micro">Micro (Tiny Fixed Interval)</option>
-                                <option value="countdown">Timer (Countdown / Count Up)</option>
-                            </select>
+                            <!-- Options are filled from the workout type registry -->
+                            <select id="workoutType" class="field" aria-label="Select workout type"></select>
                             <p id="typeHelp" class="sr-only">Select the type of workout to configure.</p>
                         </div>
 
@@ -280,8 +274,31 @@
         </div>
     </div>
     <div id="toast" class="fixed bottom-4 right-4 bg-emerald-500 text-slate-100 px-4 py-2 rounded-md shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50" aria-live="polite" aria-atomic="true"></div>
-    <script src="timer-core.js"></script>
-    <script src="timer.js"></script>
+    <!-- Core: pure logic, no DOM (also unit tested with `npm test`) -->
+    <script src="src/core/time.js"></script>
+    <script src="src/core/intervals.js"></script>
+    <script src="src/core/fields.js"></script>
+    <script src="src/core/workout-types.js"></script>
+    <script src="src/core/config.js"></script>
+    <script src="src/core/share-link.js"></script>
+    <script src="src/core/duration-split.js"></script>
+    <script src="src/core/engine.js"></script>
+    <script src="src/core/presenter.js"></script>
+    <script src="src/core/storage.js"></script>
+    <script src="src/core/quick-presets.js"></script>
+    <!-- UI: DOM bindings -->
+    <script src="src/ui/dom.js"></script>
+    <script src="src/ui/feedback.js"></script>
+    <script src="src/ui/modal.js"></script>
+    <script src="src/ui/screens.js"></script>
+    <script src="src/ui/scale.js"></script>
+    <script src="src/ui/config-form.js"></script>
+    <script src="src/ui/timer-view.js"></script>
+    <script src="src/ui/pinned-view.js"></script>
+    <script src="src/ui/presets-view.js"></script>
+    <script src="src/ui/share-view.js"></script>
+    <!-- Wiring -->
+    <script src="src/app.js"></script>
 </body>
 
 </html>

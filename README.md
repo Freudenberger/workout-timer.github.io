@@ -22,7 +22,7 @@ Just open and train.
 - Preset save/load (localStorage)
 - Pin up to 5 favorite workouts for one‑click access on the main screen
 - Accessible: ARIA live region, focus rings, high contrast, keyboard shortcuts
-- Pure client-side: Tailwind CDN + small `styles.css` + `timer.js` (no dependencies / tooling)
+- Pure client-side: Tailwind CDN + `styles.css` + small ES5-friendly modules under `src/` (no dependencies / tooling / build step)
 
 ## 🚀 Quick Start
 
@@ -64,28 +64,94 @@ Pins persist in `localStorage` under the key `workoutTimer.pinned.v1`.
 | Micro     | Repeat a tiny fixed interval many times (e.g. 5s × 100) | prep, reps, interval                                                       |
 | Countdown | Simple timer with down or up mode                       | prep, mode, total                                                          |
 
+## 🧱 Project Layout
+
+```
+index.html          markup + the script list (load order matters)
+styles.css
+src/core/           pure logic, no DOM — unit tested
+  time.js           mm:ss formatting
+  intervals.js      interval math (durations, elapsed, effective time)
+  fields.js         catalog of editable fields (labels, bounds, kinds)
+  workout-types.js  registry: defaults, fields and sequence builders per type
+  config.js         merge with defaults, legacy mapping, fingerprints, summary
+  share-link.js     config <-> query string, URL parsing
+  duration-split.js minutes/seconds arithmetic for duration inputs
+  engine.js         TimerEngine (injectable clock)
+  presenter.js      view models: round text, progress, log entries, controls
+  storage.js        presets + pinned workouts (injectable Web Storage)
+  quick-presets.js  ready-made configurations
+src/ui/             DOM bindings, no logic
+  dom.js feedback.js modal.js screens.js scale.js
+  config-form.js timer-view.js pinned-view.js presets-view.js share-view.js
+src/app.js          wiring: engine events <-> views
+tests/              node:test suites (`npm test`)
+```
+
+Everything in `src/core` is a UMD-ish module: it registers itself on `window.WT.*`
+in the browser and exports via `module.exports` in node, so the same file runs in
+the page and in the tests. No bundler, no `type="module"` — the page still works
+straight from `file://`.
+
 ## ⏱️ Interval Shape
 
 ```js
-{ label: string, type: 'work' | 'rest' | 'prep' | 'cooldown', duration: number }
+{
+  label: string,
+  type: 'prep' | 'work' | 'rest' | 'cooldown',
+  duration: number,          // seconds
+  variant?: string,          // 'warmup' | 'rest-exercise' | 'rest-between' (styling)
+  round?: number,            // 1-based round (or rep)
+  exercise?: number,         // 1-based exercise inside the round
+  mode?: 'up',               // count-up interval
+  softLimit?: number | null, // count-up target; exceeding it is allowed
+}
 ```
 
 ## 🔄 Engine Events
 
-`load`, `start`, `interval`, `interval_complete`, `tick`, `pause`, `resume`, `finish`
+`load`, `start`, `interval`, `interval_complete`, `skipped`, `tick`, `pause`, `resume`, `reset`, `finish`
+
+The engine takes its clock via the constructor (`new TimerEngine({ clock })`), which
+is how the tests run whole workouts instantly.
 
 ## 🎹 Shortcuts
 
 - Space: start / pause / resume
-- r: rebuild current config
+- r: reset (rebuild current config, clear the log)
 - s: skip current interval
+
+## 🧪 Tests
+
+```
+npm test        # node --test, no dependencies
+```
+
+`tests/app-smoke.test.js` boots the real browser bundle against a tiny DOM stub,
+so a broken script list in `index.html` or a bad cross-module reference fails the
+suite.
 
 ## 🛠️ Extend
 
-1. Add a builder in `WorkoutTypes` returning `{ sequence, meta }`.
-2. Add defaults in `defaultConfigs`.
-3. Map editable fields in `typeFieldMap` (and define in `fieldDefs` if new).
-4. (Optional) style via `styles.css` & phase classes (`body.phase-work`, etc.).
+Add a workout type with one entry in `src/core/workout-types.js`:
+
+```js
+ladder: {
+  label: "Ladder",
+  optionLabel: "Ladder (increasing work)",
+  emoji: "🪜",
+  fields: ["prep", "rounds", "work"],       // names from src/core/fields.js
+  defaults: { prep: 10, rounds: 5, work: 20 },
+  build(config) {
+    // return { sequence: Interval[], meta: { totalRounds } }
+  },
+}
+```
+
+The type `<select>`, config form, summary, share links, sequence preview and timer
+screen all read from that registry. Add a new field to `src/core/fields.js` first if
+you need one, add a shortcut card in `index.html` if you want one on the Select
+screen, and style phases via `styles.css` (`body.phase-work`, `.seq-*`).
 
 ## 🎨 Styling Notes
 
@@ -103,3 +169,5 @@ MIT — do anything, attribution appreciated.
 ---
 
 Train hard. Ship small. Improve fast.
+
+From [Freudenberger](https://github.com/Freudenberger) with ❤️

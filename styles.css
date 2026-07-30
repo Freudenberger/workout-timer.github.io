@@ -420,6 +420,7 @@ body.soft-limit-exceeded .timer-dial::after {
 .seq-cooldown .seq-dot {
   background: var(--gradient-cool);
 }
+.seq-rest .seq-dot,
 .seq-rest-exercise .seq-dot {
   background: var(--gradient-rest);
 }
