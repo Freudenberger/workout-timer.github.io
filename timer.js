@@ -80,6 +80,120 @@ function showToast(msg) {
   }, 2000);
 }
 
+const timerCore = globalThis.WorkoutTimerCore;
+
+function buildCountdownWorkout(config) {
+  if (timerCore?.buildCountdownWorkout) {
+    return timerCore.buildCountdownWorkout(config);
+  }
+
+  const mode = config.mode === "up" ? "up" : "down";
+  const total = Math.max(0, config.total ?? 600);
+  const prep = Math.max(0, config.prep || 0);
+  const sequence = [];
+  if (prep) {
+    sequence.push({ label: "Get Ready", type: "prep", duration: prep });
+  }
+  if (mode === "up") {
+    sequence.push({
+      label: "Count Up",
+      type: "work",
+      duration: total,
+      mode: "up",
+      softLimit: total > 0 ? total : null,
+    });
+    return {
+      sequence,
+      meta: {
+        totalRounds: 1,
+        mode: "up",
+        softLimit: total > 0 ? total : null,
+      },
+    };
+  }
+  sequence.push({ label: "Timer", type: "work", duration: total });
+  return { sequence, meta: { totalRounds: 1, mode: "down" } };
+}
+
+function serializeConfigForQuery(config) {
+  if (timerCore?.serializeConfigToQuery) {
+    return timerCore.serializeConfigToQuery(config);
+  }
+
+  if (!config?.type) return "";
+
+  const params = new URLSearchParams();
+  const isCountUp = config.type === "countdown" && config.mode === "up";
+  params.set("type", isCountUp ? "countup" : config.type);
+  Object.entries(config).forEach(([key, value]) => {
+    if (key === "type") return;
+    if (key === "mode") {
+      if (isCountUp) return;
+      if (typeof value === "string")
+        params.set(key, value === "up" ? "up" : "down");
+      return;
+    }
+    if (typeof value === "number" && !isNaN(value)) {
+      params.set(key, String(value));
+    }
+  });
+  return params.toString();
+}
+
+function parseConfigFromQuery(qs) {
+  if (timerCore?.parseQueryParamsToConfig) {
+    return timerCore.parseQueryParamsToConfig(qs, {
+      supportedTypes: new Set(Object.keys(defaultConfigs)),
+    });
+  }
+
+  if (!qs.has("type")) return null;
+  const rawType = qs.get("type");
+  const type = rawType === "countup" ? "countdown" : rawType;
+  if (!WorkoutTypes[type]) return null;
+
+  const cfg = { type };
+  const numericFields = new Set([
+    "prep",
+    "rounds",
+    "work",
+    "rest",
+    "warmup",
+    "cooldown",
+    "betweenRounds",
+    "exercisesPerRound",
+    "exerciseWork",
+    "exerciseRest",
+    "reps",
+    "interval",
+    "total",
+  ]);
+
+  if (rawType === "countup") {
+    cfg.mode = "up";
+  }
+
+  qs.forEach((val, key) => {
+    if (key === "type") return;
+    if (key === "mode") {
+      if (rawType !== "countup") {
+        cfg.mode = val === "up" ? "up" : "down";
+      }
+      return;
+    }
+    if (numericFields.has(key)) {
+      const n = parseInt(val, 10);
+      if (!isNaN(n)) cfg[key] = n;
+    }
+  });
+
+  if (type === "countdown" && !cfg.mode) {
+    cfg.mode = "down";
+  }
+
+  return cfg;
+}
+
 // ---------- Workout Type Definitions ----------
 // Each builder returns { sequence: Interval[], meta }
 // Interval: { label, type: 'work'|'rest'|'prep'|'cooldown', duration }
@@ -202,34 +316,7 @@ const WorkoutTypes = {
     return { sequence, meta: { totalRounds: reps } };
   },
   countdown(config) {
-    // Countdown supports two modes:
-    // - down: classic countdown with an end at total seconds
-    // - up: count from 00:00 forever, optionally with a soft limit for display/summary
-    const mode = config.mode || "down";
-    const total = Math.max(0, config.total ?? 600); // default 10 min, 0 = no upper limit in count-up mode
-    const prep = config.prep || 0;
-    const sequence = [];
-    if (prep)
-      sequence.push({ label: "Get Ready", type: "prep", duration: prep });
-    if (mode === "up") {
-      sequence.push({
-        label: "Count Up",
-        type: "work",
-        duration: total,
-        mode: "up",
-        softLimit: total > 0 ? total : null,
-      });
-      return {
-        sequence,
-        meta: {
-          totalRounds: 1,
-          mode: "up",
-          softLimit: total > 0 ? total : null,
-        },
-      };
-    }
-    sequence.push({ label: "Timer", type: "work", duration: total });
-    return { sequence, meta: { totalRounds: 1, mode: "down" } };
+    return buildCountdownWorkout(config);
   },
 };
 
@@ -483,7 +570,7 @@ const els = {
   scaleValue: $("#scaleValue"),
 };
 
-const defaultConfigs = {
+const defaultConfigs = timerCore?.defaultConfigs || {
   emom: { prep: 10, rounds: 10, work: 40 },
   tabata: { prep: 10, rounds: 8, work: 20, rest: 10 },
   hiit: { prep: 10, rounds: 6, work: 45, rest: 15, warmup: 60, cooldown: 60 },
@@ -497,7 +584,7 @@ const defaultConfigs = {
     exerciseRest: 10,
     betweenRounds: 30,
   },
-  // Micro: very small fixed interval repeated N times (e.g., every 5s do 1 rep / action)
+  // Micro: very small fixed interval repeated N times (e.g. every 5s do 1 rep / action)
   micro: { prep: 10, reps: 100, interval: 5 },
   countdown: { prep: 10, mode: "down", total: 600 },
 };
@@ -1142,14 +1229,7 @@ function build() {
 
 // -------- Shareable URL Logic --------
 function configToQuery() {
-  const { type, ...cfg } = collectConfig();
-  const params = new URLSearchParams();
-  params.set("type", type);
-  Object.entries(cfg).forEach(([k, v]) => {
-    if (k === "mode" && typeof v === "string") params.set(k, v);
-    else if (typeof v === "number" && !isNaN(v)) params.set(k, String(v));
-  });
-  return params.toString();
+  return serializeConfigForQuery(collectConfig());
 }
 
 // Clear current query string (optionally preserving selected keys)
@@ -1186,35 +1266,8 @@ function clearQueryString(preserveKeys = []) {
 
 // Parse URLSearchParams into config & apply (returns true on success)
 function applyParams(qs) {
-  if (!qs.has("type")) return false;
-  const type = qs.get("type");
-  if (!WorkoutTypes[type]) return false;
-  const cfg = { type };
-  const numericFields = new Set([
-    "prep",
-    "rounds",
-    "work",
-    "rest",
-    "warmup",
-    "cooldown",
-    "betweenRounds",
-    "exercisesPerRound",
-    "exerciseWork",
-    "exerciseRest",
-    "reps",
-    "interval",
-    "total",
-  ]);
-  qs.forEach((val, key) => {
-    if (key === "mode") {
-      cfg.mode = val === "up" ? "up" : "down";
-      return;
-    }
-    if (numericFields.has(key)) {
-      const n = parseInt(val, 10);
-      if (!isNaN(n)) cfg[key] = n;
-    }
-  });
+  const cfg = parseConfigFromQuery(qs);
+  if (!cfg) return false;
   applyConfig(cfg);
   build();
   return true;

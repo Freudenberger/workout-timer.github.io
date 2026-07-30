@@ -1,0 +1,11 @@
+{
+  "name": "workout-timer-github-io",
+  "author": {
+    "name": "Freudenberger",
+    "url": "https://github.com/Freudenberger"
+  },
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}
