@@ -60,7 +60,7 @@
       const query = shareLink.extractQueryString(els.importUrlInput?.value);
       if (!query) return;
       const cfg = shareLink.parse(query);
-      if (!cfg || !onImport(cfg)) {
+      if (!cfg || !onImport(cfg, "input")) {
         announce("Invalid or unsupported parameters");
         setImportStatus("Invalid parameters", "error");
         return;
@@ -73,7 +73,7 @@
     /** Apply ?type=...&... from the current address, if present. */
     function applyLocationQuery() {
       const cfg = shareLink.parse(new URLSearchParams(location.search));
-      if (!cfg || !onImport(cfg)) return false;
+      if (!cfg || !onImport(cfg, "location")) return false;
       clearQueryString();
       return true;
     }

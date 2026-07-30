@@ -217,7 +217,8 @@
         const key = input.dataset.key;
         if (fields.isNumericKey(key)) {
           const value = parseInt(input.value, 10);
-          if (!Number.isNaN(value)) raw[key] = value;
+          // Typed values bypass the steppers, so clamp them here too.
+          if (!Number.isNaN(value)) raw[key] = fields.clampForKey(key, value);
         } else {
           raw[key] = input.value;
         }

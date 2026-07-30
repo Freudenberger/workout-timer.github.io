@@ -198,6 +198,7 @@ function install({ search = "", hash = "", type = "emom" } = {}) {
   };
 
   const storage = new Map();
+  const replaceStateCalls = [];
   const window = globalThis;
   // Some of these (navigator) are getter-only on the node global.
   const define = (values) => {
@@ -221,7 +222,11 @@ function install({ search = "", hash = "", type = "emom" } = {}) {
       origin: "https://example.com",
       pathname: "/",
     },
-    history: { replaceState() {} },
+    history: {
+      replaceState(...args) {
+        replaceStateCalls.push(args);
+      },
+    },
     getComputedStyle: () => ({ getPropertyValue: () => "1" }),
     requestAnimationFrame: () => 1,
     cancelAnimationFrame: () => {},
@@ -235,7 +240,7 @@ function install({ search = "", hash = "", type = "emom" } = {}) {
     addEventListener: () => {},
   });
 
-  return { document, elements, element, storage };
+  return { document, elements, element, storage, replaceStateCalls };
 }
 
 /** Script sources in the order index.html loads them. */

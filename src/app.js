@@ -304,7 +304,10 @@
 
     const share = shareView.create({
       getCurrentConfig,
-      onImport: (cfg) => loadConfig(cfg),
+      // A pasted URL jumps straight to the timer; the address bar query is
+      // routed by route() below, which owns the initial screen.
+      onImport: (cfg, source) =>
+        loadConfig(cfg, { screen: source === "input" ? "screenTimer" : null }),
     });
     const pins = pinnedView.create({
       getCurrentConfig,

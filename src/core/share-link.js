@@ -66,7 +66,11 @@
         }
         if (fields.isNumericKey(key)) {
           const parsed = parseInt(value, 10);
-          if (!Number.isNaN(parsed)) config[key] = parsed;
+          // Links are untrusted input: keep every value inside its field bounds
+          // so a hand-edited URL cannot build a nonsensical sequence.
+          if (!Number.isNaN(parsed)) {
+            config[key] = fields.clampForKey(key, parsed);
+          }
         }
       });
 
